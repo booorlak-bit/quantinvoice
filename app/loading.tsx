@@ -1,5 +1,4 @@
-// Every page reads the database or the session at request time, so the root
-// Suspense boundary streams pages in behind an empty shell.
+// Pages read the session and the database at request time; this boundary streams them in.
 export default function Loading() {
   return null;
 }

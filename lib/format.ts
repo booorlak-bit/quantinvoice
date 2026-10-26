@@ -1,33 +1,42 @@
-import type { InvoiceItem, InvoiceStatus } from "./types";
+import type { InvoiceItem } from "./types";
 
-export const STATUS_LABELS: Record<InvoiceStatus, string> = {
-  draft: "Draft",
-  not_paid: "Not Paid",
-  paid: "Paid",
-};
-
-export function formatMoney(amount: string | number, currency: string) {
+export function formatMoney(amount: string | number, currency: string, options: { compact?: boolean } = {}) {
+  const value = Number(amount);
   try {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(Number(amount));
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      ...(options.compact ? { notation: "compact", maximumFractionDigits: 1 } : {}),
+    }).format(value);
   } catch {
-    return `${Number(amount).toFixed(2)} ${currency}`;
+    return `${value.toFixed(2)} ${currency}`;
   }
 }
 
-/** Formats an ISO date (YYYY-MM-DD) as "Sep 25, 2023" without timezone drift. */
-export function formatDate(isoDate: string | null) {
+/** Formats an ISO date (YYYY-MM-DD, or a timestamp) as "Sep 25, 2026" without timezone drift. */
+export function formatDate(isoDate: string | null, options: { short?: boolean } = {}) {
   if (!isoDate) return "—";
-  const [year, month, day] = isoDate.split("-").map(Number);
+  const [year, month, day] = isoDate.slice(0, 10).split("-").map(Number);
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric",
+    ...(options.short ? {} : { year: "numeric" }),
     timeZone: "UTC",
   }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
 /** Sums decimal strings in integer cents to avoid floating point drift. */
-export function sumItems(items: InvoiceItem[]) {
+export function sumItems(items: Pick<InvoiceItem, "amount">[]) {
   const cents = items.reduce((total, item) => total + Math.round(Number(item.amount ?? 0) * 100), 0);
   return (cents / 100).toFixed(2);
+}
+
+export function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function addDaysIso(isoDate: string, days: number) {
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
