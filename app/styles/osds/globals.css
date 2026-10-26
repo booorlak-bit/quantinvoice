@@ -1,0 +1,70 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@fontsource-variable/inter/opsz.css';
+@import '@fontsource-variable/inter/opsz-italic.css';
+@import '@fontsource-variable/geist-mono';
+@import './tokens.css';
+@import './theme.css';
+
+/* Dark mode follows the `.dark` class (or data-mode="dark") on any ancestor; a `.light` island inside it opts back out. */
+@custom-variant dark (&:where(.dark, .dark *, [data-mode='dark'], [data-mode='dark'] *):not(:where(.light, .light *, [data-mode='light'], [data-mode='light'] *)));
+
+/*
+ * Interaction states can be forced with `data-force="hover focus active"` on the element that carries
+ * the state classes. The docs use this to render every state statically, exactly like the Figma variants.
+ */
+@custom-variant hover {
+  @media (hover: hover) {
+    &:hover {
+      @slot;
+    }
+  }
+  &:where([data-force~='hover']) {
+    @slot;
+  }
+}
+@custom-variant focus-visible {
+  &:focus-visible {
+    @slot;
+  }
+  &:where([data-force~='focus']) {
+    @slot;
+  }
+}
+@custom-variant active {
+  &:active {
+    @slot;
+  }
+  &:where([data-force~='active']) {
+    @slot;
+  }
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-weight: var(--font-weight-normal);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    letter-spacing: -0.015em;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}

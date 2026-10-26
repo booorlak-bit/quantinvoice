@@ -1,14 +1,21 @@
 import Link from "next/link";
-import styles from "./not-found.module.css";
+import { Button } from "@/components/ui/button";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 
 export default function NotFound() {
   return (
-    <main className={styles.page}>
-      <h1 className={styles.title}>Not found</h1>
-      <p className="muted">This invoice doesn’t exist or is no longer available.</p>
-      <Link href="/" className={styles.link}>
-        Go home
-      </Link>
+    <main className="flex min-h-svh items-center justify-center p-6">
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>Page not found</EmptyTitle>
+          <EmptyDescription>This page doesn’t exist or is no longer available.</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button asChild variant="outline">
+            <Link href="/">Go home</Link>
+          </Button>
+        </EmptyContent>
+      </Empty>
     </main>
   );
 }

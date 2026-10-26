@@ -2,13 +2,15 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
+import { sql } from "./db";
+import type { User } from "./types";
 
-const COOKIE_NAME = "qi_admin";
+const COOKIE_NAME = "qi_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 /** Describes what is missing from the server's auth configuration, or null when it is complete. */
 export function authConfigError() {
-  if (!process.env.ADMIN_PASSWORD) return "ADMIN_PASSWORD is not set on the server.";
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.length < 32) {
     return "SESSION_SECRET must be set on the server and be at least 32 characters long.";
@@ -16,32 +18,22 @@ export function authConfigError() {
   return null;
 }
 
-// Signing with the admin password as part of the key means that changing
-// ADMIN_PASSWORD signs every existing session out.
-function signingKey() {
+// The key mixes in the user's password hash, so changing a password signs that user out everywhere.
+function sign(value: string, passwordHash: string) {
   const error = authConfigError();
   if (error) throw new Error(error);
-  return `${process.env.SESSION_SECRET}:${process.env.ADMIN_PASSWORD}`;
-}
-
-function sign(value: string) {
-  return createHmac("sha256", signingKey()).update(value).digest("base64url");
+  return createHmac("sha256", `${process.env.SESSION_SECRET}:${passwordHash}`).update(value).digest("base64url");
 }
 
 function safeEqual(a: string, b: string) {
-  const left = createHmac("sha256", "compare").update(a).digest();
-  const right = createHmac("sha256", "compare").update(b).digest();
-  return timingSafeEqual(left, right);
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
 }
 
-export function isValidPassword(password: string) {
-  const expected = process.env.ADMIN_PASSWORD;
-  return Boolean(expected) && safeEqual(password, expected!);
-}
-
-export async function startSession() {
-  const expires = String(Date.now() + MAX_AGE_SECONDS * 1000);
-  (await cookies()).set(COOKIE_NAME, `${expires}.${sign(expires)}`, {
+export async function startSession(userId: string, passwordHash: string) {
+  const payload = `${userId}.${Date.now() + MAX_AGE_SECONDS * 1000}`;
+  (await cookies()).set(COOKIE_NAME, `${payload}.${sign(payload, passwordHash)}`, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -54,14 +46,43 @@ export async function endSession() {
   (await cookies()).delete(COOKIE_NAME);
 }
 
-export async function isAdmin() {
+/** The signed-in user, or null. Cached per request. */
+export const getCurrentUser = cache(async (): Promise<User | null> => {
   const value = (await cookies()).get(COOKIE_NAME)?.value;
-  if (!value) return false;
-  const [expires, signature] = value.split(".");
-  if (!expires || !signature || Number(expires) < Date.now()) return false;
-  return safeEqual(signature, sign(expires));
+  if (!value || authConfigError()) return null;
+  const [userId, expires, signature] = value.split(".");
+  if (!userId || !expires || !signature || Number(expires) < Date.now()) return null;
+  if (!/^[0-9a-f-]{36}$/.test(userId)) return null;
+
+  const [row] = await sql<(User & { passwordHash: string })[]>`
+    select id, email, name, avatar_url, role, theme, created_at::text as created_at, password_hash
+    from users where id = ${userId}
+  `;
+  if (!row || !safeEqual(signature, sign(`${userId}.${expires}`, row.passwordHash))) return null;
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    avatarUrl: row.avatarUrl,
+    role: row.role,
+    theme: row.theme,
+    createdAt: row.createdAt,
+  };
+});
+
+export async function requireUser(returnTo: string) {
+  const user = await getCurrentUser();
+  if (!user) redirect(`/login?next=${encodeURIComponent(returnTo)}`);
+  return user;
 }
 
-export async function requireAdmin(returnTo: string) {
-  if (!(await isAdmin())) redirect(`/login?next=${encodeURIComponent(returnTo)}`);
+export async function requireOwner(returnTo: string) {
+  const user = await requireUser(returnTo);
+  if (user.role !== "owner") redirect("/dashboard");
+  return user;
+}
+
+/** Same-site relative paths only, to avoid open redirects. */
+export function safeReturnPath(value: unknown, fallback = "/dashboard") {
+  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//") ? value : fallback;
 }
