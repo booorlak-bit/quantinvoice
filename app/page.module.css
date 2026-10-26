@@ -1,0 +1,356 @@
+.header {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 432px) 1fr;
+  align-items: center;
+  gap: 20px;
+  height: 80px;
+  padding: 0 var(--page-gutter);
+  border-bottom: 1px solid var(--divider);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.brandText > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brandTagline {
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--muted);
+}
+
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 20px;
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.search input {
+  width: 100%;
+  height: 40px;
+  padding: 0 16px 0 52px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: transparent;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.search input::placeholder {
+  color: var(--muted);
+}
+
+.search input:focus {
+  border-color: var(--text);
+}
+
+.newButton {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 24px;
+  border: 1px solid var(--text);
+  border-radius: 100px;
+  white-space: nowrap;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.newButton:hover {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.main {
+  padding: 80px var(--page-gutter) 0;
+}
+
+.title {
+  font-size: 80px;
+  font-weight: 400;
+  line-height: 80px;
+  letter-spacing: -2px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 40px;
+}
+
+.segmented {
+  display: inline-flex;
+  height: 48px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+
+.segmented a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  font-size: 16px;
+  color: var(--muted);
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.segmented a + a {
+  border-left: 1px solid var(--border);
+}
+
+.segmented a:hover {
+  color: var(--text);
+}
+
+.segmented a.active {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.viewToggle a {
+  min-width: 105px;
+}
+
+.table {
+  margin-top: 40px;
+}
+
+.tableHead,
+.tableRow {
+  display: grid;
+  grid-template-columns: 160px 2.2fr 1.7fr 160px 160px 160px 1fr;
+  align-items: center;
+  column-gap: 0;
+  font-size: 16px;
+}
+
+.tableHead {
+  padding: 12px 25px 16px;
+  color: var(--muted);
+}
+
+.tableRow {
+  height: 64px;
+  padding: 0 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-row);
+  transition: border-color 0.2s;
+}
+
+.tableRow + .tableRow {
+  margin-top: 16px;
+}
+
+.tableRow:hover {
+  border-color: var(--text);
+}
+
+.tableRow > span {
+  overflow: hidden;
+  padding-right: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alignEnd {
+  text-align: right;
+  padding-right: 0 !important;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-top: 40px;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  aspect-ratio: 1;
+  min-height: 260px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-row);
+  font-size: 16px;
+  transition: border-color 0.2s;
+}
+
+.card:hover {
+  border-color: var(--text);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+}
+
+.cardTotal {
+  margin-top: 16px;
+  font-size: 24px;
+  line-height: 32px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+  margin-top: 40px;
+  padding: 40px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-row);
+  color: var(--muted);
+}
+
+.empty .newButton {
+  color: var(--text);
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 80px;
+  padding: 0 var(--page-gutter) 40px;
+}
+
+.footerBottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.footerNav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  color: var(--muted);
+}
+
+.footerNav a,
+.footerNav button {
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.footerNav a:hover,
+.footerNav button:hover {
+  color: var(--text);
+}
+
+@media (max-width: 1199px) {
+  .table,
+  .viewToggle {
+    display: none;
+  }
+
+  .cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .mobileOnly {
+    display: none;
+  }
+}
+
+@media (max-width: 809px) {
+  .header {
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    height: 64px;
+  }
+
+  .brand {
+    gap: 12px;
+  }
+
+  .brandText {
+    display: none;
+  }
+
+  .searchIcon {
+    left: 12px;
+  }
+
+  .search input {
+    padding-left: 38px;
+  }
+
+  .newButton {
+    padding: 0 16px;
+  }
+
+  .main {
+    padding-top: 40px;
+  }
+
+  .title {
+    font-size: 48px;
+    line-height: 48px;
+    letter-spacing: -1px;
+  }
+
+  .toolbar {
+    margin-top: 24px;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .card {
+    aspect-ratio: auto;
+    min-height: 240px;
+  }
+}

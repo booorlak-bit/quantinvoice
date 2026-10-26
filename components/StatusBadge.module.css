@@ -1,0 +1,23 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 4px 16px;
+  border-radius: 100px;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.draft {
+  background: var(--status-draft);
+}
+
+.not_paid {
+  background: var(--status-not-paid);
+}
+
+.paid {
+  background: var(--status-paid);
+}
