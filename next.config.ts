@@ -9,6 +9,11 @@ const hasCentralIcons = existsSync(path.join(process.cwd(), "node_modules/centra
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  // PDFs are rendered on the invoice routes (and in the send-by-email action on the invoice page) with these fonts.
+  outputFileTracingIncludes: {
+    "/invoices/**": ["./lib/pdf/fonts/**"],
+    "/i/**": ["./lib/pdf/fonts/**"],
+  },
   turbopack: {
     resolveAlias: hasCentralIcons ? {} : { "central-icons": "./components/icons/central-fallback.tsx" },
   },

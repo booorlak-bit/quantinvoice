@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { IconFileDownload } from 'central-icons'
 
 import { InvoiceDocument, styleTheme } from '@/components/invoice/invoice-document'
 import { PayBar } from '@/components/invoice/pay-bar'
@@ -56,7 +57,18 @@ export default async function PublicInvoicePage({ params }: PageProps<'/i/[slug]
       <QuantumInvoice
         invoice={invoice}
         payBar={payBar}
-        topBarExtra={isOwner ? <Link className={quantumStyles.editLink} href={`/invoices/${invoice.id}`}>Open in app</Link> : undefined}
+        topBarExtra={
+          <>
+            <a className={quantumStyles.editLink} href={`/i/${invoice.slug}/pdf`} download>
+              Download PDF
+            </a>
+            {isOwner && (
+              <Link className={quantumStyles.editLink} href={`/invoices/${invoice.id}`}>
+                Open in app
+              </Link>
+            )}
+          </>
+        }
       />
     )
   }
@@ -65,13 +77,19 @@ export default async function PublicInvoicePage({ params }: PageProps<'/i/[slug]
   return (
     <div id="invoice-page" data-theme={theme['data-theme']} className={cn(theme.className, 'min-h-svh bg-background text-foreground')}>
       <div className={cn('px-4 py-6 sm:py-12', payable && 'pb-32')}>
-        {isOwner && (
-          <div className="mx-auto mb-4 flex max-w-3xl justify-end">
+        <div className="mx-auto mb-4 flex max-w-3xl justify-end gap-2">
+          <Button asChild variant="outline" size="sm">
+            <a href={`/i/${invoice.slug}/pdf`} download>
+              <IconFileDownload />
+              Download PDF
+            </a>
+          </Button>
+          {isOwner && (
             <Button asChild variant="outline" size="sm">
               <Link href={`/invoices/${invoice.id}`}>Open in app</Link>
             </Button>
-          </div>
-        )}
+          )}
+        </div>
         <InvoiceDocument invoice={invoice} />
       </div>
       {payable && (

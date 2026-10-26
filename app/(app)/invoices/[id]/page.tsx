@@ -6,9 +6,10 @@ import { IconCircleCheck, IconEyeOpen, IconDollar, IconFileText, IconPaperPlaneT
 import { PageBody, PageHeader } from '@/components/app/page-header'
 import { InvoiceDocument, styleTheme } from '@/components/invoice/invoice-document'
 import { QuantumInvoice } from '@/components/invoice/quantum-invoice'
-import { CopyLinkButton, DeletePaymentButton, InvoiceActions } from '@/components/invoices/invoice-actions'
+import { DeletePaymentButton, InvoiceActions } from '@/components/invoices/invoice-actions'
+import { ShareButton } from '@/components/invoices/share-dialog'
 import { InvoiceStatusBadge } from '@/components/invoices/status-badge'
-import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -16,6 +17,7 @@ import { requireUser } from '@/lib/auth'
 import { isUuid } from '@/lib/data/clients'
 import { getInvoice, listEvents, listPayments, type InvoiceEvent } from '@/lib/data/invoices'
 import { listInvoicePaymentMethods } from '@/lib/data/payment-methods'
+import { emailConfigError } from '@/lib/email'
 import { formatDate, formatMoney, sumItems } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -61,9 +63,27 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
       <PageHeader
         crumbs={[{ label: 'Invoices', href: '/invoices' }, { label: invoice.number }]}
         actions={
-          <InvoiceActions
-            invoice={{ id: invoice.id, slug: invoice.slug, number: invoice.number, status: invoice.status, currency: invoice.currency, balance }}
-          />
+          <>
+            <ShareButton
+              defaultOpen={created}
+              emailError={emailConfigError()}
+              invoice={{
+                id: invoice.id,
+                slug: invoice.slug,
+                number: invoice.number,
+                title: invoice.title,
+                status: invoice.status,
+                amountDue: formatMoney(balance, invoice.currency),
+                dueDate: formatDate(invoice.dueDate),
+                companyName: invoice.company.name,
+                clientName: invoice.client.name,
+                clientEmail: invoice.client.email,
+              }}
+            />
+            <InvoiceActions
+              invoice={{ id: invoice.id, slug: invoice.slug, number: invoice.number, status: invoice.status, currency: invoice.currency, balance }}
+            />
+          </>
         }
       />
       <PageBody
@@ -83,12 +103,9 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
             <AlertTitle>Invoice created</AlertTitle>
             <AlertDescription>
               {invoice.status === 'draft'
-                ? 'It is a draft, so only you can open its page. Mark it as sent when you share it.'
-                : 'Share the link with your client.'}
+                ? 'It’s a draft, so only you can open its page until you send it.'
+                : 'Share the link, download the PDF or email it to your client.'}
             </AlertDescription>
-            <AlertAction>
-              <CopyLinkButton slug={invoice.slug} />
-            </AlertAction>
           </Alert>
         )}
 
@@ -140,8 +157,8 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
                     <dd className="truncate font-medium">{invoice.company.name}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt className="text-muted-foreground">Pay with</dt>
-                    <dd className="truncate text-right font-medium">
+                    <dt className="shrink-0 text-muted-foreground">Pay with</dt>
+                    <dd className="min-w-0 text-right font-medium">
                       {methods.length || invoice.stripeLink ? (
                         [...(invoice.stripeLink && !methods.some((method) => method.type === 'stripe') ? ['Stripe link'] : []), ...methods.map((method) => method.name)].join(', ')
                       ) : (

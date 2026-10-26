@@ -46,8 +46,8 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { formatDate } from '@/lib/format'
-import type { Company, Note, User } from '@/lib/types'
 import { submitWithoutReset } from '@/lib/submit'
+import type { Company, Note, User } from '@/lib/types'
 
 /** Shows a toast and runs `then` each time a settings action completes without an error. */
 function useDone(state: SettingsState, message: string, then?: () => void) {

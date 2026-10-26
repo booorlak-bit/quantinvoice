@@ -393,3 +393,14 @@ export async function recordView(invoiceId: string, userId: string) {
     )
   `;
 }
+
+/** Records that the invoice went to the client; a draft becomes unpaid so the client can open it. */
+export async function markSent(userId: string, invoiceId: string, to: string[]) {
+  await sql.begin(async (tx) => {
+    await tx`
+      update invoices set sent_at = now(), status = case when status = 'draft' then 'not_paid' else status end
+      where id = ${invoiceId} and user_id = ${userId}
+    `;
+    await tx`insert into invoice_events (user_id, invoice_id, type, detail) values (${userId}, ${invoiceId}, 'sent', ${tx.json({ to: to.join(", ") })})`;
+  });
+}

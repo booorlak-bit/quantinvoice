@@ -52,23 +52,8 @@ import {
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
-import type { InvoiceStatus } from '@/lib/types'
 import { submitWithoutReset } from '@/lib/submit'
-
-export function CopyLinkButton({ slug, variant = 'outline', label = 'Copy link' }: { slug: string; variant?: 'outline' | 'default' | 'secondary'; label?: string }) {
-  return (
-    <Button
-      variant={variant}
-      onClick={async () => {
-        await navigator.clipboard.writeText(`${window.location.origin}/i/${slug}`)
-        toast.success('Link copied')
-      }}
-    >
-      <IconChainLink1 />
-      {label}
-    </Button>
-  )
-}
+import type { InvoiceStatus } from '@/lib/types'
 
 /** Header actions of the invoice page: edit, open the client page, change status, record a payment, delete. */
 export function InvoiceActions({

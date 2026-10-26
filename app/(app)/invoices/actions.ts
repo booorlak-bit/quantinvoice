@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { ensureProject } from "@/lib/data/clients";
-import { createInvoice, deleteInvoices, deletePayment, recordPayment, setInvoicesStatus, updateInvoice } from "@/lib/data/invoices";
+import { createInvoice, deleteInvoices, deletePayment, getInvoice, markSent, recordPayment, setInvoicesStatus, updateInvoice } from "@/lib/data/invoices";
+import { EmailError, emailConfigError, sendEmail } from "@/lib/email";
+import { formatDate, formatMoney, sumItems } from "@/lib/format";
+import { invoiceEmail } from "@/lib/invoice-email";
+import { getPayOptions } from "@/lib/pay-options";
+import { pdfFileName, renderInvoicePdf } from "@/lib/pdf/invoice-pdf";
+import { siteUrl } from "@/lib/site-url";
 import { slugify } from "@/lib/slug";
 import { INVOICE_STATUSES, INVOICE_STYLES, type InvoiceInput, type InvoiceStatus, type InvoiceStyle } from "@/lib/types";
 import * as v from "@/lib/validation";
@@ -144,4 +150,55 @@ export async function deletePaymentAction(paymentId: string) {
   const user = await requireUser("/invoices");
   await deletePayment(user.id, paymentId);
   revalidatePath("/", "layout");
+}
+
+/** Emails the invoice to the client: a message plus the page link, the PDF or both. */
+export async function sendInvoiceAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = v.uuidOrNull(formData, "id");
+  const user = await requireUser(id ? `/invoices/${id}` : "/invoices");
+  const configError = emailConfigError();
+  if (configError) return { error: configError };
+
+  try {
+    const invoice = id ? await getInvoice(user.id, id) : null;
+    if (!invoice) throw new v.ValidationError("This invoice no longer exists.");
+    const to = [...new Set(v.text(formData, "to").split(/[\s,;]+/).filter(Boolean).map((email) => email.toLowerCase()))];
+    if (to.length === 0) throw new v.ValidationError("Add the client’s email.");
+    if (to.length > 5) throw new v.ValidationError("Send to five addresses at most.");
+    const invalid = to.find((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+    if (invalid) throw new v.ValidationError(`“${invalid}” is not a valid email.`);
+    const subject = v.required(formData, "subject", "Subject", 200);
+    const message = v.optional(formData, "message", 5000) ?? "";
+    const include = v.text(formData, "include");
+    const withLink = include === "link" || include === "both";
+    const withPdf = include === "pdf" || include === "both";
+    if (!withLink && !withPdf) throw new v.ValidationError("Choose what to send: the link, the PDF or both.");
+
+    const pageUrl = `${await siteUrl()}/i/${invoice.slug}`;
+    const balance = Math.max(Number(sumItems(invoice.items)) - Number(invoice.paidTotal), 0);
+    const pdf = withPdf ? await renderInvoicePdf(invoice, await getPayOptions({ ...invoice, userId: user.id }), pageUrl) : null;
+    const email = invoiceEmail({
+      companyName: invoice.company.name,
+      message,
+      number: invoice.number,
+      title: invoice.title,
+      amount: formatMoney(balance, invoice.currency),
+      dueDate: formatDate(invoice.dueDate),
+      pageUrl: withLink ? pageUrl : null,
+      hasPdf: Boolean(pdf),
+    });
+    await sendEmail({
+      to,
+      subject,
+      ...email,
+      replyTo: invoice.company.contactEmail ?? invoice.company.email,
+      attachments: pdf ? [{ filename: pdfFileName(invoice), content: pdf }] : undefined,
+    });
+    await markSent(user.id, invoice.id, to);
+  } catch (error) {
+    if (error instanceof v.ValidationError || error instanceof EmailError) return { error: error.message };
+    throw error;
+  }
+  revalidatePath("/", "layout");
+  return { error: null, done: Date.now() };
 }

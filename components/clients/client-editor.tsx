@@ -22,8 +22,8 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import type { Client } from '@/lib/types'
 import { submitWithoutReset } from '@/lib/submit'
+import type { Client } from '@/lib/types'
 
 export function ClientEditor({ client, hasInvoices }: { client: Client; hasInvoices: boolean }) {
   const [state, action, pending] = useActionState(updateClientAction, { error: null })
