@@ -1,6 +1,5 @@
 -- Workspace schema: user accounts, and per-user companies, clients, projects, payment methods,
--- templates, payments and invoice activity. Additive only, so the previous release keeps working
--- until the cleanup migration (20261026100100_cleanup.sql) runs.
+-- templates, payments and invoice activity. Additive only, so the previous release keeps working.
 --
 -- Every row belongs to a user (`user_id`). Rows that existed before accounts have no user yet;
 -- the first account to sign in (the owner) claims them.
