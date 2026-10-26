@@ -2,7 +2,7 @@
 
 import { format, parseISO } from 'date-fns'
 import Link from 'next/link'
-import { useActionState, useState, type ReactNode } from 'react'
+import { useActionState, useState } from 'react'
 import {
   IconCheckmark1Medium,
   IconCrossMedium,
@@ -13,10 +13,12 @@ import {
 
 import { saveInvoiceAction } from '@/app/(app)/invoices/actions'
 import { NewClientDialog, type PickerClient } from '@/components/clients/new-client-dialog'
+import { METHOD_KINDS, methodSummary } from '@/components/payment-methods/kinds'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   ComboboxContent,
   ComboboxEmpty,
@@ -37,7 +39,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { addDaysIso, formatMoney, sumItems } from '@/lib/format'
-import type { InvoiceItem, InvoiceStatus, InvoiceStyle, Note } from '@/lib/types'
+import type { InvoiceItem, InvoiceStatus, InvoiceStyle, Note, PaymentMethod } from '@/lib/types'
+import { submitWithoutReset } from '@/lib/submit'
 import { cn } from '@/lib/utils'
 
 export const STYLE_OPTIONS: { value: InvoiceStyle; label: string; description: string }[] = [
@@ -80,6 +83,7 @@ export type InvoiceFormValues = {
   taxNote: string
   style: InvoiceStyle
   stripeLink: string
+  methodIds: string[]
   notes: Note[]
   items: { title: string; description: string; amount: string }[]
 }
@@ -94,9 +98,11 @@ export function InvoiceForm({
   companies,
   clients: initialClients,
   templates,
+  methods,
   numberByCompany,
 }: {
   initial: InvoiceFormValues
+  methods: PaymentMethod[]
   companies: { id: string; name: string; defaultCurrency: string }[]
   clients: PickerClient[]
   templates: FormTemplate[]
@@ -138,7 +144,7 @@ export function InvoiceForm({
   }
 
   return (
-    <form action={action} className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+    <form onSubmit={submitWithoutReset(action)} className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       {values.id && <input type="hidden" name="id" value={values.id} />}
       <input type="hidden" name="clientId" value={values.clientId ?? ''} />
       <input type="hidden" name="companyId" value={values.companyId} />
@@ -427,7 +433,13 @@ export function InvoiceForm({
           </CardContent>
         </Card>
 
-        <PaymentSlot />
+        <PaymentMethodsCard
+          methods={methods}
+          selected={values.methodIds}
+          onSelectedChange={(methodIds) => set('methodIds', methodIds)}
+          stripeLink={values.stripeLink}
+          onStripeLinkChange={(stripeLink) => set('stripeLink', stripeLink)}
+        />
 
         {state.error && (
           <Alert variant="destructive">
@@ -448,9 +460,78 @@ export function InvoiceForm({
   )
 }
 
-/** Placeholder for the payment-method picker, filled in once payment methods exist. */
-function PaymentSlot(): ReactNode {
-  return null
+/** Which payment methods the invoice offers, plus an optional Stripe link just for this invoice. */
+function PaymentMethodsCard({
+  methods,
+  selected,
+  onSelectedChange,
+  stripeLink,
+  onStripeLinkChange,
+}: {
+  methods: PaymentMethod[]
+  selected: string[]
+  onSelectedChange: (ids: string[]) => void
+  stripeLink: string
+  onStripeLinkChange: (value: string) => void
+}) {
+  const stripe = methods.find((method) => method.type === 'stripe' && selected.includes(method.id))
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Payment</CardTitle>
+        <CardDescription>{methods.length ? 'Ways to pay shown on the invoice.' : 'Add payment methods to show pay buttons on the invoice.'}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {selected.map((id) => (
+          <input key={id} type="hidden" name="methodId" value={id} />
+        ))}
+        {methods.length === 0 ? (
+          <Button asChild variant="outline" size="sm" className="self-start">
+            <a href="/payment-methods" target="_blank" rel="noopener noreferrer">
+              Add payment methods
+            </a>
+          </Button>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {methods.map((method) => {
+              const Icon = METHOD_KINDS[method.type].icon
+              const checked = selected.includes(method.id)
+              return (
+                <label key={method.id} className="flex items-start gap-2.5">
+                  <Checkbox
+                    className="mt-0.5"
+                    checked={checked}
+                    onCheckedChange={(next) => onSelectedChange(next ? [...selected, method.id] : selected.filter((id) => id !== method.id))}
+                  />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="flex items-center gap-1.5 text-sm font-medium">
+                      <Icon className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{method.name}</span>
+                    </span>
+                    <span className="truncate font-mono text-xs text-muted-foreground">{methodSummary(method)}</span>
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+        )}
+        {(stripe || stripeLink) && (
+          <Field>
+            <FieldLabel htmlFor="stripeLink">Stripe link for this invoice</FieldLabel>
+            <Input
+              id="stripeLink"
+              name="stripeLink"
+              type="url"
+              placeholder={stripe?.type === 'stripe' ? stripe.details.url : 'https://buy.stripe.com/…'}
+              value={stripeLink}
+              onChange={(event) => onStripeLinkChange(event.target.value)}
+            />
+            <FieldDescription>{stripe ? `Leave empty to use the ${stripe.name} link.` : 'Shown as a card payment button.'}</FieldDescription>
+          </Field>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
 
 function ClientPicker({

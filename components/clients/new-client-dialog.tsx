@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { submitWithoutReset } from '@/lib/submit'
 
 export type PickerClient = {
   id: string
@@ -51,10 +52,12 @@ export function NewClientDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <form
-          action={action}
           className="flex flex-col gap-4"
           // The dialog sits inside the invoice form in the React tree; stop its submit from reaching that form.
-          onSubmit={(event) => event.stopPropagation()}
+          onSubmit={(event) => {
+            event.stopPropagation()
+            submitWithoutReset(action)(event)
+          }}
         >
           <DialogHeader>
             <DialogTitle>New client</DialogTitle>

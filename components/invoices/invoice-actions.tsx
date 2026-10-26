@@ -53,6 +53,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
 import type { InvoiceStatus } from '@/lib/types'
+import { submitWithoutReset } from '@/lib/submit'
 
 export function CopyLinkButton({ slug, variant = 'outline', label = 'Copy link' }: { slug: string; variant?: 'outline' | 'default' | 'secondary'; label?: string }) {
   return (
@@ -210,7 +211,7 @@ export function RecordPaymentDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
-        <form action={action} className="flex flex-col gap-4">
+        <form onSubmit={submitWithoutReset(action)} className="flex flex-col gap-4">
           <input type="hidden" name="invoiceId" value={invoiceId} />
           <DialogHeader>
             <DialogTitle>Record payment</DialogTitle>

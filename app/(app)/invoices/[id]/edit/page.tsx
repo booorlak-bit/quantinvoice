@@ -7,13 +7,19 @@ import { requireUser } from '@/lib/auth'
 import { listClientOptions } from '@/lib/data/clients'
 import { listCompanies } from '@/lib/data/companies'
 import { getInvoice } from '@/lib/data/invoices'
+import { listPaymentMethods } from '@/lib/data/payment-methods'
 
 export const metadata: Metadata = { title: 'Edit invoice' }
 
 export default async function EditInvoicePage({ params }: PageProps<'/invoices/[id]/edit'>) {
   const { id } = await params
   const user = await requireUser(`/invoices/${id}/edit`)
-  const [invoice, companies, clients] = await Promise.all([getInvoice(user.id, id), listCompanies(user.id), listClientOptions(user.id)])
+  const [invoice, companies, clients, methods] = await Promise.all([
+    getInvoice(user.id, id),
+    listCompanies(user.id),
+    listClientOptions(user.id),
+    listPaymentMethods(user.id),
+  ])
   if (!invoice) notFound()
 
   return (
@@ -24,6 +30,7 @@ export default async function EditInvoicePage({ params }: PageProps<'/invoices/[
           companies={companies.map((entry) => ({ id: entry.id, name: entry.name, defaultCurrency: entry.defaultCurrency }))}
           clients={clients}
           templates={[]}
+          methods={methods}
           numberByCompany={{}}
           initial={{
             id: invoice.id,
@@ -41,6 +48,7 @@ export default async function EditInvoicePage({ params }: PageProps<'/invoices/[
             taxNote: invoice.taxNote,
             style: invoice.style,
             stripeLink: invoice.stripeLink ?? '',
+            methodIds: invoice.methodIds,
             notes: invoice.notes,
             items: invoice.items.map((item) => ({ title: item.title, description: item.description ?? '', amount: item.amount ?? '' })),
           }}

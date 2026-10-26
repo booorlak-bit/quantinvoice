@@ -149,3 +149,27 @@ export type InvoiceFilters = {
 export const SORT_KEYS = ["number", "title", "client", "project", "status", "issue", "due", "total"] as const;
 export type SortKey = (typeof SORT_KEYS)[number];
 export type Sort = { key: SortKey; dir: "asc" | "desc" };
+
+export const PAYMENT_METHOD_TYPES = ["stripe", "crypto", "bank", "link"] as const;
+export type PaymentMethodType = (typeof PAYMENT_METHOD_TYPES)[number];
+
+/** What the payer sees for each kind of method. Stripe uses a Payment Link for now; the API mode comes later. */
+export type PaymentMethodDetails = {
+  stripe: { url: string };
+  crypto: { asset: string; network: string; address: string; memo: string | null };
+  bank: {
+    accountHolder: string;
+    bankName: string | null;
+    iban: string | null;
+    accountNumber: string | null;
+    swift: string | null;
+    routingNumber: string | null;
+    bankAddress: string | null;
+    reference: string | null;
+  };
+  link: { url: string; label: string };
+};
+
+export type PaymentMethod = {
+  [T in PaymentMethodType]: { id: string; name: string; type: T; details: PaymentMethodDetails[T]; isDefault: boolean };
+}[PaymentMethodType];

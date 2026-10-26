@@ -23,6 +23,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { Client } from '@/lib/types'
+import { submitWithoutReset } from '@/lib/submit'
 
 export function ClientEditor({ client, hasInvoices }: { client: Client; hasInvoices: boolean }) {
   const [state, action, pending] = useActionState(updateClientAction, { error: null })
@@ -54,7 +55,7 @@ export function ClientEditor({ client, hasInvoices }: { client: Client; hasInvoi
         <CardDescription>Shown on invoices under “Bill to”.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={action} className="flex flex-col gap-4">
+        <form onSubmit={submitWithoutReset(action)} className="flex flex-col gap-4">
           <input type="hidden" name="id" value={client.id} />
           <FieldGroup className="grid gap-4 sm:grid-cols-2">
             <Field>

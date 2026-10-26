@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/auth'
 import { listClientOptions } from '@/lib/data/clients'
 import { listCompanies } from '@/lib/data/companies'
 import { suggestInvoiceNumber } from '@/lib/data/invoices'
+import { listPaymentMethods } from '@/lib/data/payment-methods'
 import { listTemplates } from '@/lib/data/templates'
 import { addDaysIso, todayIso } from '@/lib/format'
 
@@ -15,10 +16,11 @@ export const metadata: Metadata = { title: 'New invoice' }
 export default async function NewInvoicePage({ searchParams }: PageProps<'/invoices/new'>) {
   const user = await requireUser('/invoices/new')
   const params = await searchParams
-  const [companies, clients, templates] = await Promise.all([
+  const [companies, clients, templates, methods] = await Promise.all([
     listCompanies(user.id),
     listClientOptions(user.id),
     listTemplates(user.id),
+    listPaymentMethods(user.id),
   ])
   if (companies.length === 0) redirect('/settings?company=new')
 
@@ -38,6 +40,7 @@ export default async function NewInvoicePage({ searchParams }: PageProps<'/invoi
           companies={companies.map((entry) => ({ id: entry.id, name: entry.name, defaultCurrency: entry.defaultCurrency }))}
           clients={clients}
           templates={templates}
+          methods={methods}
           numberByCompany={numbers}
           initial={{
             companyId: company.id,
@@ -54,6 +57,7 @@ export default async function NewInvoicePage({ searchParams }: PageProps<'/invoi
             taxNote: 'Calculated at checkout',
             style: presetTemplate?.style ?? 'light',
             stripeLink: '',
+            methodIds: methods.filter((method) => method.isDefault).map((method) => method.id),
             notes: presetTemplate?.notes ?? company.defaultNotes,
             items: (presetTemplate?.items ?? []).map((item) => ({ title: item.title, description: item.description ?? '', amount: item.amount ?? '' })),
           }}

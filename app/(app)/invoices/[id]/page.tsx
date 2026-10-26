@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator'
 import { requireUser } from '@/lib/auth'
 import { isUuid } from '@/lib/data/clients'
 import { getInvoice, listEvents, listPayments, type InvoiceEvent } from '@/lib/data/invoices'
+import { listInvoicePaymentMethods } from '@/lib/data/payment-methods'
 import { formatDate, formatMoney, sumItems } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -41,7 +42,12 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
   // Links from the first release used /invoices/<slug> for the client page.
   if (!isUuid(id)) redirect(`/i/${id}`)
   const user = await requireUser(`/invoices/${id}`)
-  const [invoice, payments, events] = await Promise.all([getInvoice(user.id, id), listPayments(user.id, id), listEvents(user.id, id)])
+  const [invoice, payments, events, methods] = await Promise.all([
+    getInvoice(user.id, id),
+    listPayments(user.id, id),
+    listEvents(user.id, id),
+    listInvoicePaymentMethods(user.id, id),
+  ])
   if (!invoice) notFound()
   const created = (await searchParams).created === '1'
 
@@ -132,6 +138,18 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
                   <div className="flex justify-between gap-4">
                     <dt className="text-muted-foreground">From</dt>
                     <dd className="truncate font-medium">{invoice.company.name}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted-foreground">Pay with</dt>
+                    <dd className="truncate text-right font-medium">
+                      {methods.length || invoice.stripeLink ? (
+                        [...(invoice.stripeLink && !methods.some((method) => method.type === 'stripe') ? ['Stripe link'] : []), ...methods.map((method) => method.name)].join(', ')
+                      ) : (
+                        <Link href={`/invoices/${invoice.id}/edit`} className="text-primary hover:underline">
+                          Add a method
+                        </Link>
+                      )}
+                    </dd>
                   </div>
                 </dl>
               </CardContent>

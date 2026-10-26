@@ -73,7 +73,8 @@ create table public.payment_methods (
   details jsonb not null default '{}' check (jsonb_typeof(details) = 'object'),
   -- AES-256-GCM encrypted JSON with secrets (Stripe secret key and webhook signing secret).
   secrets text,
-  is_active boolean not null default true,
+  -- Added to new invoices automatically.
+  is_default boolean not null default true,
   position integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

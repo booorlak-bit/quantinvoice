@@ -7,11 +7,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { submitWithoutReset } from '@/lib/submit'
 
 export function LoginForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(login, { error: null })
   return (
-    <form action={action}>
+    <form onSubmit={submitWithoutReset(action)}>
       <input type="hidden" name="next" value={next} />
       <FieldGroup>
         <Field>

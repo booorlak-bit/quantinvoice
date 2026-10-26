@@ -47,6 +47,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { formatDate } from '@/lib/format'
 import type { Company, Note, User } from '@/lib/types'
+import { submitWithoutReset } from '@/lib/submit'
 
 /** Shows a toast and runs `then` each time a settings action completes without an error. */
 function useDone(state: SettingsState, message: string, then?: () => void) {
@@ -83,7 +84,7 @@ export function ProfileCard({ user }: { user: User }) {
         <CardDescription>Your name and email for signing in. Invoices use the company details above.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={action} className="flex flex-col gap-4">
+        <form onSubmit={submitWithoutReset(action)} className="flex flex-col gap-4">
           <input type="hidden" name="theme" value={user.theme} />
           <div className="flex items-center gap-3">
             <Avatar size="12">
@@ -131,7 +132,7 @@ export function PasswordCard() {
         <CardDescription>At least 10 characters. Changing it signs you out on other devices.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={action} className="flex flex-col gap-4">
+        <form onSubmit={submitWithoutReset(action)} className="flex flex-col gap-4">
           <FieldGroup className="grid gap-4 sm:grid-cols-3">
             {(
               [
@@ -269,7 +270,7 @@ function CompanyDialog({ company, onClose }: { company: Company | 'new' | null; 
   return (
     <Dialog open={company !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-xl">
-        <form action={action} className="flex flex-col gap-4">
+        <form onSubmit={submitWithoutReset(action)} className="flex flex-col gap-4">
           {existing && <input type="hidden" name="id" value={existing.id} />}
           <DialogHeader>
             <DialogTitle>{existing ? `Edit ${existing.name}` : 'Add company'}</DialogTitle>
@@ -467,7 +468,7 @@ function AddAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <form action={action} className="flex flex-col gap-4">
+        <form onSubmit={submitWithoutReset(action)} className="flex flex-col gap-4">
           <DialogHeader>
             <DialogTitle>Add account</DialogTitle>
             <DialogDescription>Share the email and temporary password with the person. They can change the password in Settings.</DialogDescription>
@@ -510,7 +511,7 @@ function ResetPasswordDialog({ account, onClose }: { account: User | null; onClo
   return (
     <Dialog open={account !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
-        <form action={action} className="flex flex-col gap-4">
+        <form onSubmit={submitWithoutReset(action)} className="flex flex-col gap-4">
           <input type="hidden" name="id" value={account?.id ?? ''} />
           <DialogHeader>
             <DialogTitle>New password for {account?.email}</DialogTitle>
