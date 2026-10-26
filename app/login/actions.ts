@@ -1,11 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { isValidPassword, startSession } from "@/lib/auth";
+import { authConfigError, isValidPassword, startSession } from "@/lib/auth";
 
 export type LoginState = { error: string | null };
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
+  const configError = authConfigError();
+  if (configError) return { error: configError };
+
   const password = formData.get("password");
   if (typeof password !== "string" || !isValidPassword(password)) {
     // Slow down password guessing.

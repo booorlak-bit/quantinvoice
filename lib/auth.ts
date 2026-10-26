@@ -6,15 +6,22 @@ import { redirect } from "next/navigation";
 const COOKIE_NAME = "qi_admin";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
+/** Describes what is missing from the server's auth configuration, or null when it is complete. */
+export function authConfigError() {
+  if (!process.env.ADMIN_PASSWORD) return "ADMIN_PASSWORD is not set on the server.";
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    return "SESSION_SECRET must be set on the server and be at least 32 characters long.";
+  }
+  return null;
+}
+
 // Signing with the admin password as part of the key means that changing
 // ADMIN_PASSWORD signs every existing session out.
 function signingKey() {
-  const secret = process.env.SESSION_SECRET;
-  const password = process.env.ADMIN_PASSWORD;
-  if (!secret || secret.length < 32 || !password) {
-    throw new Error("SESSION_SECRET (32+ characters) and ADMIN_PASSWORD must be set");
-  }
-  return `${secret}:${password}`;
+  const error = authConfigError();
+  if (error) throw new Error(error);
+  return `${process.env.SESSION_SECRET}:${process.env.ADMIN_PASSWORD}`;
 }
 
 function sign(value: string) {
