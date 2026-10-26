@@ -4,7 +4,6 @@ import { format, parseISO } from 'date-fns'
 import Link from 'next/link'
 import { useActionState, useState } from 'react'
 import {
-  IconCheckmark1Medium,
   IconCrossMedium,
   IconFolder1,
   IconPeopleAdd,
@@ -13,6 +12,8 @@ import {
 
 import { saveInvoiceAction } from '@/app/(app)/invoices/actions'
 import { NewClientDialog, type PickerClient } from '@/components/clients/new-client-dialog'
+import { emptyItem, LineItemsEditor, NotesEditor, withKey } from '@/components/invoices/editors'
+import { StylePicker } from '@/components/invoices/style-picker'
 import { METHOD_KINDS, methodSummary } from '@/components/payment-methods/kinds'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -36,20 +37,9 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
-import { Textarea } from '@/components/ui/textarea'
-import { addDaysIso, formatMoney, sumItems } from '@/lib/format'
-import type { InvoiceItem, InvoiceStatus, InvoiceStyle, Note, PaymentMethod } from '@/lib/types'
+import { addDaysIso } from '@/lib/format'
 import { submitWithoutReset } from '@/lib/submit'
-import { cn } from '@/lib/utils'
-
-export const STYLE_OPTIONS: { value: InvoiceStyle; label: string; description: string }[] = [
-  { value: 'light', label: 'Light', description: 'OSDS, white surfaces and blue actions' },
-  { value: 'dark', label: 'Dark', description: 'OSDS in dark mode' },
-  { value: 'alt-light', label: 'Monochrome', description: 'Black actions, glass cards' },
-  { value: 'alt-dark', label: 'Monochrome dark', description: 'Monochrome in dark mode' },
-  { value: 'quantum', label: 'Quantum', description: 'The original Framer template' },
-]
+import type { InvoiceItem, InvoiceStatus, InvoiceStyle, Note, PaymentMethod } from '@/lib/types'
 
 const STATUS_OPTIONS: { value: InvoiceStatus; label: string }[] = [
   { value: 'draft', label: 'Draft' },
@@ -88,10 +78,6 @@ export type InvoiceFormValues = {
   items: { title: string; description: string; amount: string }[]
 }
 
-type Row<T> = T & { key: number }
-let nextKey = 0
-const withKey = <T,>(value: T): Row<T> => ({ ...value, key: nextKey++ })
-const emptyItem = () => withKey({ title: '', description: '', amount: '' })
 
 export function InvoiceForm({
   initial,
@@ -121,12 +107,6 @@ export function InvoiceForm({
     setValues((current) => ({ ...current, [key]: value }))
 
   const client = clients.find((entry) => entry.id === values.clientId) ?? null
-  const total = sumItems(
-    items.map((item) => {
-      const cleaned = item.amount.replace(/[\s,$€£₽]/g, '')
-      return { amount: /^\d+(\.\d{1,2})?$/.test(cleaned) ? cleaned : null }
-    }),
-  )
   const currencyValid = /^[A-Z]{3}$/.test(values.currency)
 
   const applyTemplate = (templateId: string) => {
@@ -250,57 +230,8 @@ export function InvoiceForm({
             <CardTitle>Line items</CardTitle>
             <CardDescription>Leave the amount empty to show an item as included.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <ul className="flex flex-col gap-2">
-              {items.map((item, index) => (
-                <li key={item.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_8rem_auto]">
-                  <Input
-                    name="itemTitle"
-                    placeholder="Item"
-                    aria-label={`Item ${index + 1}`}
-                    value={item.title}
-                    onChange={(event) => setItems((rows) => rows.map((row) => (row.key === item.key ? { ...row, title: event.target.value } : row)))}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="sm:order-last"
-                    aria-label={`Remove item ${index + 1}`}
-                    disabled={items.length === 1}
-                    onClick={() => setItems((rows) => rows.filter((row) => row.key !== item.key))}
-                  >
-                    <IconCrossMedium />
-                  </Button>
-                  <Input
-                    name="itemDescription"
-                    placeholder="Description"
-                    aria-label={`Item ${index + 1} description`}
-                    className="col-span-2 sm:col-span-1"
-                    value={item.description}
-                    onChange={(event) => setItems((rows) => rows.map((row) => (row.key === item.key ? { ...row, description: event.target.value } : row)))}
-                  />
-                  <Input
-                    name="itemAmount"
-                    placeholder="Included"
-                    inputMode="decimal"
-                    aria-label={`Item ${index + 1} amount`}
-                    className="col-span-2 text-right tabular-nums sm:col-span-1"
-                    value={item.amount}
-                    onChange={(event) => setItems((rows) => rows.map((row) => (row.key === item.key ? { ...row, amount: event.target.value } : row)))}
-                  />
-                </li>
-              ))}
-            </ul>
-            <Button type="button" variant="outline" size="sm" className="self-start" onClick={() => setItems((rows) => [...rows, emptyItem()])}>
-              <IconPlusMedium />
-              Add item
-            </Button>
-            <Separator />
-            <div className="flex items-center justify-between text-sm font-medium">
-              <span className="text-muted-foreground">Total</span>
-              <span className="text-base text-foreground tabular-nums">{formatMoney(total, currencyValid ? values.currency : 'USD')}</span>
-            </div>
+          <CardContent>
+            <LineItemsEditor items={items} onChange={setItems} currency={currencyValid ? values.currency : 'USD'} />
           </CardContent>
         </Card>
 
@@ -309,36 +240,8 @@ export function InvoiceForm({
             <CardTitle>Notes</CardTitle>
             <CardDescription>Terms, expenses and payment instructions shown under the totals.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {notes.length === 0 && <p className="text-sm text-muted-foreground">No notes.</p>}
-            {notes.map((note, index) => (
-              <div key={note.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-                <div className="flex min-w-0 flex-col gap-2">
-                  <Input
-                    name="noteTitle"
-                    placeholder="Title"
-                    aria-label={`Note ${index + 1} title`}
-                    value={note.title}
-                    onChange={(event) => setNotes((rows) => rows.map((row) => (row.key === note.key ? { ...row, title: event.target.value } : row)))}
-                  />
-                  <Textarea
-                    name="noteBody"
-                    placeholder="Text"
-                    rows={2}
-                    aria-label={`Note ${index + 1} text`}
-                    value={note.body}
-                    onChange={(event) => setNotes((rows) => rows.map((row) => (row.key === note.key ? { ...row, body: event.target.value } : row)))}
-                  />
-                </div>
-                <Button type="button" variant="ghost" size="icon" aria-label={`Remove note ${index + 1}`} onClick={() => setNotes((rows) => rows.filter((row) => row.key !== note.key))}>
-                  <IconCrossMedium />
-                </Button>
-              </div>
-            ))}
-            <Button type="button" variant="outline" size="sm" className="self-start" onClick={() => setNotes((rows) => [...rows, withKey({ title: '', body: '' })])}>
-              <IconPlusMedium />
-              Add note
-            </Button>
+          <CardContent>
+            <NotesEditor notes={notes} onChange={setNotes} />
           </CardContent>
         </Card>
       </div>
@@ -697,52 +600,5 @@ function DateField({ value, onChange, placeholder = 'Pick a date' }: { value: st
         />
       </DatePickerContent>
     </DatePicker>
-  )
-}
-
-export function StylePicker({ value, onChange }: { value: InvoiceStyle; onChange: (value: InvoiceStyle) => void }) {
-  return (
-    <div role="radiogroup" aria-label="Invoice style" className="grid grid-cols-5 gap-1.5">
-      {STYLE_OPTIONS.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          role="radio"
-          aria-checked={value === option.value}
-          title={`${option.label}: ${option.description}`}
-          onClick={() => onChange(option.value)}
-          className={cn(
-            'relative flex aspect-square items-end justify-start overflow-hidden rounded-md border border-border p-1 outline-none focus-visible:shadow-focus',
-            value === option.value && 'border-primary ring-1 ring-primary',
-          )}
-        >
-          <StyleSwatch style={option.value} />
-          {value === option.value && <IconCheckmark1Medium className="absolute top-1 right-1 size-3.5 text-primary" />}
-          <span className="sr-only">{option.label}</span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
-/** A tiny invoice drawn in the style's own theme. */
-export function StyleSwatch({ style }: { style: InvoiceStyle }) {
-  if (style === 'quantum') {
-    return (
-      <span aria-hidden="true" className="absolute inset-0 flex flex-col gap-0.5 bg-muted p-1.5">
-        <span className="size-2 rounded-[2px] bg-foreground" />
-        <span className="mt-auto h-0.5 w-3/4 rounded-full bg-foreground/60" />
-        <span className="h-0.5 w-1/2 rounded-full bg-foreground/30" />
-      </span>
-    )
-  }
-  const dark = style === 'dark' || style === 'alt-dark'
-  const alt = style === 'alt-light' || style === 'alt-dark'
-  return (
-    <span aria-hidden="true" data-theme={alt ? 'alt' : 'osds'} className={cn('absolute inset-0 flex flex-col gap-0.5 bg-background p-1.5', dark && 'dark')}>
-      <span className="h-0.5 w-1/2 rounded-full bg-foreground/70" />
-      <span className="h-0.5 w-1/3 rounded-full bg-muted-foreground/50" />
-      <span className="mt-auto h-1.5 w-full rounded-[2px] bg-primary" />
-    </span>
   )
 }
