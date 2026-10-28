@@ -111,7 +111,7 @@ function InvoicePdf({ invoice, options, pageUrl, logo }: { invoice: Invoice; opt
   const money = (value: string | number) => formatMoney(value, invoice.currency);
 
   return (
-    <Document title={`${invoice.number} · ${invoice.title}`} author={company.name} creator="Quantinvoice" producer="Quantinvoice">
+    <Document title={`${invoice.number} · ${invoice.title}`} author={company.name} creator="fliq.email" producer="fliq.email">
       <Page size="A4" style={s.page}>
         <View style={s.header}>
           <View style={s.brand}>

@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { ensureProject } from "@/lib/data/clients";
 import { createInvoice, deleteInvoices, deletePayment, getInvoice, markSent, recordPayment, setInvoicesStatus, updateInvoice } from "@/lib/data/invoices";
-import { EmailError, emailConfigError, sendEmail } from "@/lib/email";
+import { brandFrom, EmailError, emailConfigError, sendEmail } from "@/lib/email";
 import { formatDate, formatMoney, sumItems } from "@/lib/format";
 import { invoiceEmail } from "@/lib/invoice-email";
 import { getPayOptions } from "@/lib/pay-options";
@@ -191,6 +191,7 @@ export async function sendInvoiceAction(_prev: FormState, formData: FormData): P
       to,
       subject,
       ...email,
+      from: brandFrom(invoice.company),
       replyTo: invoice.company.contactEmail ?? invoice.company.email,
       attachments: pdf ? [{ filename: pdfFileName(invoice), content: pdf }] : undefined,
       // One key per press of Send: retries inside sendEmail reuse it, a new send gets a new one.

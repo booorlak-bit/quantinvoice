@@ -29,6 +29,8 @@ export type Company = {
   address: string | null;
   taxId: string | null;
   website: string | null;
+  /** The part before the @ that invoice emails come from, on the app's sending domain. */
+  sender: string | null;
   invoicePrefix: string;
   defaultCurrency: string;
   defaultNotes: Note[];
