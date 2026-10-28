@@ -1,4 +1,5 @@
 import "server-only";
+import { connection } from "next/server";
 import { sql } from "../db";
 import type { InvoiceFilters } from "../types";
 import { filterConditions } from "./invoices";
@@ -67,6 +68,8 @@ export async function getDashboard(
   currency: string,
   range: DashboardRange,
 ): Promise<Dashboard> {
+  // The periods (and any period filter) count from today, so the clock is read at request time, never in a prerender.
+  await connection();
   const scope = filterConditions({ companyId: filters.companyId, clientId: filters.clientId, projectId: filters.projectId, currency });
   const months = RANGE_MONTHS[range];
   const now = new Date();

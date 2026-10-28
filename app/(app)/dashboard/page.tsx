@@ -30,6 +30,10 @@ import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
+// Every number depends on the session, the filters in the URL and the database. A navigation here waits for them and
+// keeps the previous render on screen (the filters dim it), rather than showing a loading state.
+export const instant = false
+
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`
 
 export default async function DashboardPage({ searchParams }: PageProps<'/dashboard'>) {

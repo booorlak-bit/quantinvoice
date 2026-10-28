@@ -17,13 +17,14 @@ const RESEND_SECONDS = 60
 
 /** Seconds left before a new code can be requested, counting down once a second. */
 function useCountdown(sentAt: number | undefined) {
-  const [now, setNow] = useState(() => Date.now())
+  // Only the ticks read the clock, never the render: Next.js can render this on the server ahead of the visit.
+  const [now, setNow] = useState(0)
   useEffect(() => {
     if (!sentAt) return
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
   }, [sentAt])
-  // Clamped: `now` can trail the server's `sentAt` until the first tick.
+  // Clamped: `now` trails the server's `sentAt` until the first tick, so the count starts at the full minute.
   return sentAt ? Math.min(RESEND_SECONDS, Math.max(0, RESEND_SECONDS - Math.floor((now - sentAt) / 1000))) : 0
 }
 
