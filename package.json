@@ -41,5 +41,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "typescript": "^5"
+  },
+  "optionalDependencies": {
+    "central-icons": "npm:@central-icons-react/round-filled-radius-2-stroke-1.5@^1.2.22"
   }
 }
