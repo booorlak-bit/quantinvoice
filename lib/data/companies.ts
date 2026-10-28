@@ -3,7 +3,7 @@ import { sql } from "../db";
 import type { Company } from "../types";
 
 const companyColumns = sql`
-  id, name, email, contact_email, tagline, logo_url, address, tax_id, website,
+  id, name, email, contact_email, tagline, logo_url, address, tax_id, website, sender,
   invoice_prefix, default_currency, default_notes, is_default
 `;
 
@@ -38,6 +38,7 @@ export async function saveCompany(userId: string, id: string | null, input: Comp
       address: input.address,
       taxId: input.taxId,
       website: input.website,
+      sender: input.sender,
       invoicePrefix: input.invoicePrefix,
       defaultCurrency: input.defaultCurrency,
       defaultNotes: tx.json(input.defaultNotes),

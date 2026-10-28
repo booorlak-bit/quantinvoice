@@ -79,11 +79,11 @@ export async function consumeLoginCode(email: string, code: string): Promise<Cod
 export function loginCodeEmail(code: string) {
   const html = `<!doctype html><html><body style="margin:0;background:#f5f5f5;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Arial,sans-serif;color:#171717;font-size:15px;line-height:1.5">
 <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e5e5e5;border-radius:14px;padding:28px">
-<p style="margin:0 0 16px;font-weight:600">Quantinvoice</p>
+<p style="margin:0 0 16px;font-weight:600">fliq.email</p>
 <p style="margin:0 0 16px">Your sign-in code:</p>
 <p style="margin:0 0 16px;font-size:32px;font-weight:600;letter-spacing:6px;font-family:ui-monospace,Menlo,monospace">${code}</p>
 <p style="margin:0;color:#737373;font-size:13px">It expires in ${CODE_TTL_MINUTES} minutes. If you didn’t ask for it, ignore this email.</p>
 </div></body></html>`;
-  const text = `Your Quantinvoice sign-in code: ${code}\n\nIt expires in ${CODE_TTL_MINUTES} minutes. If you didn’t ask for it, ignore this email.`;
-  return { subject: `${code} is your Quantinvoice code`, html, text };
+  const text = `Your fliq.email sign-in code: ${code}\n\nIt expires in ${CODE_TTL_MINUTES} minutes. If you didn’t ask for it, ignore this email.`;
+  return { subject: `${code} is your fliq.email code`, html, text };
 }

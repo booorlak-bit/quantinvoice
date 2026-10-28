@@ -24,6 +24,8 @@ export type ShareInvoice = {
   amountDue: string
   dueDate: string
   companyName: string
+  /** Who the email comes from, like "Studio <studio@mail.example.com>". */
+  from: string | null
   clientName: string
   clientEmail: string | null
 }
@@ -153,7 +155,7 @@ function EmailStep({
       <input type="hidden" name="include" value={include} />
       <DialogHeader>
         <DialogTitle>Email {invoice.number}</DialogTitle>
-        <DialogDescription>Replies go to the brand’s email.</DialogDescription>
+        <DialogDescription>{invoice.from ? `From ${invoice.from}. ` : ''}Replies go to the brand’s email.</DialogDescription>
       </DialogHeader>
       {emailError && (
         <Alert>

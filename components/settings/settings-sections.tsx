@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
 import { Textarea } from '@/components/ui/textarea'
 import { formatDate } from '@/lib/format'
 import { submitWithoutReset } from '@/lib/submit'
@@ -148,7 +149,7 @@ export function DevicesCard() {
 // ——— Brands ———————————————————————————————————————————————————————————————————————————————
 
 /** Brands are the projects and services invoices come from, each with its own details and numbering. */
-export function BrandsSection({ companies, openNew }: { companies: Company[]; openNew: boolean }) {
+export function BrandsSection({ companies, openNew, senderDomain }: { companies: Company[]; openNew: boolean; senderDomain: string | null }) {
   const [editing, setEditing] = useState<Company | 'new' | null>(openNew ? 'new' : null)
   const [working, start] = useTransition()
 
@@ -194,6 +195,14 @@ export function BrandsSection({ companies, openNew }: { companies: Company[]; op
                   <dt className="text-xs text-muted-foreground">Currency</dt>
                   <dd className="font-medium">{company.defaultCurrency}</dd>
                 </div>
+                {company.sender && senderDomain && (
+                  <div className="col-span-2 min-w-0">
+                    <dt className="text-xs text-muted-foreground">Emails from</dt>
+                    <dd className="truncate font-medium">
+                      {company.sender}@{senderDomain}
+                    </dd>
+                  </div>
+                )}
               </dl>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setEditing(company)}>
@@ -236,12 +245,12 @@ export function BrandsSection({ companies, openNew }: { companies: Company[]; op
           </Card>
         ))}
       </div>
-      <BrandDialog key={editing === 'new' ? 'new' : (editing?.id ?? 'closed')} company={editing} onClose={() => setEditing(null)} />
+      <BrandDialog key={editing === 'new' ? 'new' : (editing?.id ?? 'closed')} company={editing} senderDomain={senderDomain} onClose={() => setEditing(null)} />
     </section>
   )
 }
 
-function BrandDialog({ company, onClose }: { company: Company | 'new' | null; onClose: () => void }) {
+function BrandDialog({ company, senderDomain, onClose }: { company: Company | 'new' | null; senderDomain: string | null; onClose: () => void }) {
   const [state, action, pending] = useActionState(saveCompanyAction, { error: null })
   const existing = company && company !== 'new' ? company : null
   const [notes, setNotes] = useState<(Note & { key: number })[]>(() => (existing?.defaultNotes ?? []).map((note, key) => ({ ...note, key })))
@@ -272,6 +281,24 @@ function BrandDialog({ company, onClose }: { company: Company | 'new' | null; on
             <Field>
               <FieldLabel htmlFor="company-contact">“Get in touch” email</FieldLabel>
               <Input id="company-contact" name="contactEmail" type="email" defaultValue={existing?.contactEmail ?? ''} placeholder="Same as above" />
+            </Field>
+            <Field className="sm:col-span-2">
+              <FieldLabel htmlFor="company-sender">Send emails from</FieldLabel>
+              <InputGroup>
+                <InputGroupInput
+                  id="company-sender"
+                  name="sender"
+                  defaultValue={existing?.sender ?? ''}
+                  placeholder="studio"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupText>@{senderDomain ?? 'sending domain'}</InputGroupText>
+                </InputGroupAddon>
+              </InputGroup>
+              <FieldDescription>Invoices go out from this address under the brand’s name; replies go to the brand’s email. Leave empty to use the default sender.</FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="company-website">Website</FieldLabel>

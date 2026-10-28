@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Quantinvoice", template: "%s · Quantinvoice" },
+  title: { default: "fliq.email", template: "%s · fliq.email" },
   description: "Invoices, clients and payments.",
   // Invoices are private documents shared by link; keep them out of search engines.
   robots: { index: false, follow: false },

@@ -69,9 +69,9 @@ export function AppSidebar({ user }: { user: SidebarUser }) {
             <SidebarMenuButton size="lg" asChild tooltip="Dashboard">
               <Link href="/dashboard" onClick={close}>
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
-                  Q
+                  f
                 </span>
-                <span className="truncate font-medium">Quantinvoice</span>
+                <span className="truncate font-medium">fliq.email</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

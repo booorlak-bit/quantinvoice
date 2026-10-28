@@ -17,7 +17,7 @@ import { requireUser } from '@/lib/auth'
 import { isUuid } from '@/lib/data/clients'
 import { getInvoice, listEvents, listPayments, type InvoiceEvent } from '@/lib/data/invoices'
 import { listInvoicePaymentMethods } from '@/lib/data/payment-methods'
-import { emailConfigError } from '@/lib/email'
+import { brandFrom, defaultFrom, emailConfigError } from '@/lib/email'
 import { formatDate, formatMoney, sumItems } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -76,6 +76,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps<'/
                 amountDue: formatMoney(balance, invoice.currency),
                 dueDate: formatDate(invoice.dueDate),
                 companyName: invoice.company.name,
+                from: brandFrom(invoice.company) ?? defaultFrom(),
                 clientName: invoice.client.name,
                 clientEmail: invoice.client.email,
               }}
