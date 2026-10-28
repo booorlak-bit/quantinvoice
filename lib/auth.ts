@@ -2,6 +2,7 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { cache } from "react";
 import { sql } from "./db";
 import type { User } from "./types";
@@ -50,6 +51,8 @@ export async function endSession() {
 export const getCurrentUser = cache(async (): Promise<User | null> => {
   const value = (await cookies()).get(COOKIE_NAME)?.value;
   if (!value || authConfigError()) return null;
+  // Cookies resolve when Next.js prerenders a signed-in App Shell, but the expiry check reads the clock: wait for the request.
+  await connection();
   const [userId, expires, signature] = value.split(".");
   if (!userId || !expires || !signature || Number(expires) < Date.now()) return null;
   if (!/^[0-9a-f-]{36}$/.test(userId)) return null;
