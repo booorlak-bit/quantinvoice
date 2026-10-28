@@ -16,7 +16,8 @@ export function parseFilters(params: Params): InvoiceFilters {
   const period = pick(params, 'period')
   const currency = pick(params, 'currency').toUpperCase()
   return {
-    companyId: uuid(pick(params, 'company')),
+    // `company` is the parameter's name from before brands.
+    companyId: uuid(pick(params, 'brand') || pick(params, 'company')),
     clientId: uuid(pick(params, 'client')),
     projectId: uuid(pick(params, 'project')),
     status: (STATUS_FILTERS as readonly string[]).includes(status) ? (status as StatusFilter) : undefined,
@@ -38,7 +39,7 @@ export function parseSort(params: Params, fallback: Sort = { key: 'issue', dir: 
 export function toSearchParams(filters: InvoiceFilters, sort?: Sort) {
   const params = new URLSearchParams()
   const set = (key: string, value: string | undefined) => value && params.set(key, value)
-  set('company', filters.companyId)
+  set('brand', filters.companyId)
   set('client', filters.clientId)
   set('project', filters.projectId)
   set('status', filters.status)

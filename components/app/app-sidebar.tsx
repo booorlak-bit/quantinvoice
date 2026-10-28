@@ -56,7 +56,7 @@ export function initials(text: string) {
   return ((words[0]?.[0] ?? '') + (words[1]?.[0] ?? '')).toUpperCase() || '?'
 }
 
-export function AppSidebar({ user, workspace }: { user: SidebarUser; workspace: string }) {
+export function AppSidebar({ user }: { user: SidebarUser }) {
   const pathname = usePathname()
   const { isMobile, setOpenMobile } = useSidebar()
   const close = () => isMobile && setOpenMobile(false)
@@ -71,10 +71,7 @@ export function AppSidebar({ user, workspace }: { user: SidebarUser; workspace: 
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
                   Q
                 </span>
-                <span className="grid min-w-0 flex-1 text-left">
-                  <span className="truncate font-medium">Quantinvoice</span>
-                  <span className="truncate text-xs text-muted-foreground">{workspace}</span>
-                </span>
+                <span className="truncate font-medium">Quantinvoice</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

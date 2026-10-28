@@ -15,7 +15,6 @@ export type User = {
   email: string;
   name: string | null;
   avatarUrl: string | null;
-  role: "owner" | "member";
   theme: "light" | "dark";
   createdAt: string;
 };

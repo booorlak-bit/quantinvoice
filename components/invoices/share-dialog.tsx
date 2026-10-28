@@ -153,7 +153,7 @@ function EmailStep({
       <input type="hidden" name="include" value={include} />
       <DialogHeader>
         <DialogTitle>Email {invoice.number}</DialogTitle>
-        <DialogDescription>Replies go to your company email.</DialogDescription>
+        <DialogDescription>Replies go to the brand’s email.</DialogDescription>
       </DialogHeader>
       {emailError && (
         <Alert>

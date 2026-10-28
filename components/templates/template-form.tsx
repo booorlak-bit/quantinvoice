@@ -92,7 +92,7 @@ export function TemplateForm({ initial, serviceTypes }: { initial: TemplateFormV
         <Card>
           <CardHeader>
             <CardTitle>Notes</CardTitle>
-            <CardDescription>Used instead of the company’s default notes.</CardDescription>
+            <CardDescription>Used instead of the brand’s default notes.</CardDescription>
           </CardHeader>
           <CardContent>
             <NotesEditor notes={notes} onChange={setNotes} />
@@ -125,7 +125,7 @@ export function TemplateForm({ initial, serviceTypes }: { initial: TemplateFormV
                   name="currency"
                   maxLength={3}
                   className="uppercase placeholder:normal-case"
-                  placeholder="Company default"
+                  placeholder="Brand default"
                   value={values.currency}
                   onChange={(event) => set('currency', event.target.value.toUpperCase())}
                 />

@@ -22,7 +22,7 @@ export default async function NewInvoicePage({ searchParams }: PageProps<'/invoi
     listTemplates(user.id),
     listPaymentMethods(user.id),
   ])
-  if (companies.length === 0) redirect('/settings?company=new')
+  if (companies.length === 0) redirect('/settings?brand=new')
 
   const company = companies.find((entry) => entry.isDefault) ?? companies[0]
   const numbers = Object.fromEntries(

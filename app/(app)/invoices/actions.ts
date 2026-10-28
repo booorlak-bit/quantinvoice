@@ -1,6 +1,6 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
@@ -193,6 +193,8 @@ export async function sendInvoiceAction(_prev: FormState, formData: FormData): P
       ...email,
       replyTo: invoice.company.contactEmail ?? invoice.company.email,
       attachments: pdf ? [{ filename: pdfFileName(invoice), content: pdf }] : undefined,
+      // One key per press of Send: retries inside sendEmail reuse it, a new send gets a new one.
+      idempotencyKey: `invoice/${invoice.id}/${randomUUID()}`,
     });
     await markSent(user.id, invoice.id, to);
   } catch (error) {

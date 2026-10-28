@@ -2,15 +2,12 @@
 
 import { useActionState, useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { IconBuildings, IconCrossMedium, IconPasswordStars, IconPencil, IconPlusMedium, IconTrashCan, IconUserDuo } from 'central-icons'
+import { IconBuildings, IconCrossMedium, IconDoor, IconPencil, IconPlusMedium, IconTrashCan } from 'central-icons'
 
 import {
-  changePasswordAction,
-  createAccountAction,
-  deleteAccountAction,
   deleteCompanyAction,
-  resetPasswordAction,
   saveCompanyAction,
+  signOutOtherDevicesAction,
   updateProfileAction,
   type SettingsState,
 } from '@/app/(app)/settings/actions'
@@ -43,7 +40,6 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { formatDate } from '@/lib/format'
 import { submitWithoutReset } from '@/lib/submit'
@@ -73,15 +69,15 @@ function FormError({ state }: { state: SettingsState }) {
 
 export function ProfileCard({ user }: { user: User }) {
   const [state, action, pending] = useActionState(updateProfileAction, { error: null })
-  const [values, setValues] = useState({ name: user.name ?? '', email: user.email, avatarUrl: user.avatarUrl ?? '' })
+  const [values, setValues] = useState({ name: user.name ?? '', avatarUrl: user.avatarUrl ?? '' })
   useDone(state, 'Profile saved')
-  const label = values.name || values.email
+  const label = values.name || user.email
 
   return (
     <Card id="profile" className="scroll-mt-4">
       <CardHeader>
         <CardTitle>Profile</CardTitle>
-        <CardDescription>Your name and email for signing in. Invoices use the company details above.</CardDescription>
+        <CardDescription>Your name and the email you sign in with. Invoices use the brand details above.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={submitWithoutReset(action)} className="flex flex-col gap-4">
@@ -93,7 +89,7 @@ export function ProfileCard({ user }: { user: User }) {
             </Avatar>
             <div className="flex flex-col">
               <span className="text-sm font-medium">{label}</span>
-              <span className="text-xs text-muted-foreground">{user.role === 'owner' ? 'Owner' : 'Member'} · since {formatDate(user.createdAt)}</span>
+              <span className="text-xs text-muted-foreground">Since {formatDate(user.createdAt)}</span>
             </div>
           </div>
           <FieldGroup className="grid gap-4 sm:grid-cols-2">
@@ -103,7 +99,8 @@ export function ProfileCard({ user }: { user: User }) {
             </Field>
             <Field>
               <FieldLabel htmlFor="profile-email">Email</FieldLabel>
-              <Input id="profile-email" name="email" type="email" required value={values.email} onChange={(event) => setValues({ ...values, email: event.target.value })} />
+              <Input id="profile-email" type="email" value={user.email} readOnly disabled />
+              <FieldDescription>Sign-in codes are sent here.</FieldDescription>
             </Field>
             <Field className="sm:col-span-2">
               <FieldLabel htmlFor="profile-avatar">Avatar URL</FieldLabel>
@@ -120,68 +117,51 @@ export function ProfileCard({ user }: { user: User }) {
   )
 }
 
-export function PasswordCard() {
-  const [state, action, pending] = useActionState(changePasswordAction, { error: null })
-  const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
-  useDone(state, 'Password changed. Other devices are signed out.', () => setForm({ currentPassword: '', newPassword: '', confirmPassword: '' }))
-
+export function DevicesCard() {
+  const [working, start] = useTransition()
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Password</CardTitle>
-        <CardDescription>At least 10 characters. Changing it signs you out on other devices.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={submitWithoutReset(action)} className="flex flex-col gap-4">
-          <FieldGroup className="grid gap-4 sm:grid-cols-3">
-            {(
-              [
-                ['currentPassword', 'Current password', 'current-password'],
-                ['newPassword', 'New password', 'new-password'],
-                ['confirmPassword', 'Repeat new password', 'new-password'],
-              ] as const
-            ).map(([name, label, autoComplete]) => (
-              <Field key={name}>
-                <FieldLabel htmlFor={`password-${name}`}>{label}</FieldLabel>
-                <Input
-                  id={`password-${name}`}
-                  name={name}
-                  type="password"
-                  autoComplete={autoComplete}
-                  required
-                  value={form[name]}
-                  onChange={(event) => setForm({ ...form, [name]: event.target.value })}
-                />
-              </Field>
-            ))}
-          </FieldGroup>
-          <FormError state={state} />
-          <Button type="submit" variant="outline" loading={pending} className="self-end">
-            <IconPasswordStars />
-            Change password
+        <CardTitle>Devices</CardTitle>
+        <CardDescription>Signed in somewhere you no longer use? Sign out everywhere except here.</CardDescription>
+        <CardAction>
+          <Button
+            variant="outline"
+            size="sm"
+            loading={working}
+            onClick={() =>
+              start(async () => {
+                await signOutOtherDevicesAction()
+                toast.success('Signed out on other devices')
+              })
+            }
+          >
+            <IconDoor />
+            Sign out other devices
           </Button>
-        </form>
-      </CardContent>
+        </CardAction>
+      </CardHeader>
     </Card>
   )
 }
 
-// ——— Companies ————————————————————————————————————————————————————————————————————————————
+// ——— Brands ———————————————————————————————————————————————————————————————————————————————
 
-export function CompaniesSection({ companies, openNew }: { companies: Company[]; openNew: boolean }) {
+/** Brands are the projects and services invoices come from, each with its own details and numbering. */
+export function BrandsSection({ companies, openNew }: { companies: Company[]; openNew: boolean }) {
   const [editing, setEditing] = useState<Company | 'new' | null>(openNew ? 'new' : null)
   const [working, start] = useTransition()
 
   return (
-    <section id="companies" className="flex scroll-mt-4 flex-col gap-3">
+    <section id="brands" className="flex scroll-mt-4 flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="flex flex-col gap-1">
-          <h2 className="text-base font-semibold text-foreground">Companies</h2>
-          <p className="text-sm text-muted-foreground">Each company is a brand you invoice from: its logo, details, numbering and default notes.</p>
+          <h2 className="text-base font-semibold text-foreground">Brands</h2>
+          <p className="text-sm text-muted-foreground">Your projects and services. Each brand has its own logo, details, invoice numbering and default notes.</p>
         </div>
         <Button variant="outline" onClick={() => setEditing('new')}>
           <IconPlusMedium />
-          Add company
+          Add brand
         </Button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -231,7 +211,7 @@ export function CompaniesSection({ companies, openNew }: { companies: Company[];
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete {company.name}?</AlertDialogTitle>
-                        <AlertDialogDescription>Only companies without invoices can be deleted.</AlertDialogDescription>
+                        <AlertDialogDescription>Only brands without invoices can be deleted.</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -241,7 +221,7 @@ export function CompaniesSection({ companies, openNew }: { companies: Company[];
                             start(async () => {
                               const result = await deleteCompanyAction(company.id)
                               if (result.error) toast.error(result.error)
-                              else toast.success('Company deleted')
+                              else toast.success('Brand deleted')
                             })
                           }
                         >
@@ -256,16 +236,16 @@ export function CompaniesSection({ companies, openNew }: { companies: Company[];
           </Card>
         ))}
       </div>
-      <CompanyDialog key={editing === 'new' ? 'new' : (editing?.id ?? 'closed')} company={editing} onClose={() => setEditing(null)} />
+      <BrandDialog key={editing === 'new' ? 'new' : (editing?.id ?? 'closed')} company={editing} onClose={() => setEditing(null)} />
     </section>
   )
 }
 
-function CompanyDialog({ company, onClose }: { company: Company | 'new' | null; onClose: () => void }) {
+function BrandDialog({ company, onClose }: { company: Company | 'new' | null; onClose: () => void }) {
   const [state, action, pending] = useActionState(saveCompanyAction, { error: null })
   const existing = company && company !== 'new' ? company : null
   const [notes, setNotes] = useState<(Note & { key: number })[]>(() => (existing?.defaultNotes ?? []).map((note, key) => ({ ...note, key })))
-  useDone(state, existing ? 'Company saved' : 'Company added', onClose)
+  useDone(state, existing ? 'Brand saved' : 'Brand added', onClose)
 
   return (
     <Dialog open={company !== null} onOpenChange={(open) => !open && onClose()}>
@@ -273,7 +253,7 @@ function CompanyDialog({ company, onClose }: { company: Company | 'new' | null; 
         <form onSubmit={submitWithoutReset(action)} className="flex flex-col gap-4">
           {existing && <input type="hidden" name="id" value={existing.id} />}
           <DialogHeader>
-            <DialogTitle>{existing ? `Edit ${existing.name}` : 'Add company'}</DialogTitle>
+            <DialogTitle>{existing ? `Edit ${existing.name}` : 'Add brand'}</DialogTitle>
             <DialogDescription>These details appear on invoices under “From”.</DialogDescription>
           </DialogHeader>
           <FieldGroup className="grid gap-4 sm:grid-cols-2">
@@ -351,185 +331,7 @@ function CompanyDialog({ company, onClose }: { company: Company | 'new' | null; 
               </Button>
             </DialogClose>
             <Button type="submit" loading={pending}>
-              {existing ? 'Save company' : 'Add company'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// ——— Accounts —————————————————————————————————————————————————————————————————————————————
-
-export function AccountsSection({ accounts, currentUserId }: { accounts: (User & { invoiceCount: number })[]; currentUserId: string }) {
-  const [adding, setAdding] = useState(false)
-  const [resetting, setResetting] = useState<User | null>(null)
-  const [working, start] = useTransition()
-
-  return (
-    <Card id="accounts" className="scroll-mt-4">
-      <CardHeader>
-        <CardTitle>Accounts</CardTitle>
-        <CardDescription>Everyone signs in with email and password and sees only their own clients, invoices and payments.</CardDescription>
-        <CardAction>
-          <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
-            <IconUserDuo />
-            Add account
-          </Button>
-        </CardAction>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-lg border border-border px-2">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Account</TableHead>
-                <TableHead className="hidden sm:table-cell">Role</TableHead>
-                <TableHead className="hidden md:table-cell">Invoices</TableHead>
-                <TableHead className="w-10">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {accounts.map((account) => (
-                <TableRow key={account.id}>
-                  <TableCell>
-                    <span className="flex items-center gap-2.5">
-                      <Avatar size="8">
-                        {account.avatarUrl && <AvatarImage src={account.avatarUrl} alt="" />}
-                        <AvatarFallback>{initials(account.name || account.email)}</AvatarFallback>
-                      </Avatar>
-                      <span className="flex min-w-0 flex-col">
-                        <span className="truncate font-medium">{account.name || account.email}</span>
-                        {account.name && <span className="truncate text-xs text-muted-foreground">{account.email}</span>}
-                      </span>
-                    </span>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    <Badge variant={account.role === 'owner' ? 'default' : 'secondary'}>{account.role === 'owner' ? 'Owner' : 'Member'}</Badge>
-                  </TableCell>
-                  <TableCell className="hidden tabular-nums md:table-cell">{account.invoiceCount}</TableCell>
-                  <TableCell>
-                    {account.id !== currentUserId && account.role !== 'owner' && (
-                      <span className="flex gap-1">
-                        <Button variant="ghost" size="icon-sm" aria-label={`Set a new password for ${account.email}`} onClick={() => setResetting(account)}>
-                          <IconPasswordStars />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon-sm" aria-label={`Delete ${account.email}`} disabled={working}>
-                              <IconTrashCan />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete {account.email}?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Their companies, clients, invoices and payments are deleted with the account. This can’t be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                variant="destructive"
-                                onClick={() =>
-                                  start(async () => {
-                                    const result = await deleteAccountAction(account.id)
-                                    if (result.error) toast.error(result.error)
-                                    else toast.success('Account deleted')
-                                  })
-                                }
-                              >
-                                Delete account
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-      <AddAccountDialog open={adding} onOpenChange={setAdding} />
-      <ResetPasswordDialog account={resetting} onClose={() => setResetting(null)} />
-    </Card>
-  )
-}
-
-function AddAccountDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const [state, action, pending] = useActionState(createAccountAction, { error: null })
-  useDone(state, 'Account created', () => onOpenChange(false))
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <form onSubmit={submitWithoutReset(action)} className="flex flex-col gap-4">
-          <DialogHeader>
-            <DialogTitle>Add account</DialogTitle>
-            <DialogDescription>Share the email and temporary password with the person. They can change the password in Settings.</DialogDescription>
-          </DialogHeader>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="account-name">Name</FieldLabel>
-              <Input id="account-name" name="name" />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="account-email">Email</FieldLabel>
-              <Input id="account-email" name="email" type="email" required placeholder="you@example.com" />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="account-password">Temporary password</FieldLabel>
-              <Input id="account-password" name="password" type="text" autoComplete="off" required minLength={10} />
-              <FieldDescription>At least 10 characters.</FieldDescription>
-            </Field>
-          </FieldGroup>
-          <FormError state={state} />
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button type="submit" loading={pending}>
-              Create account
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function ResetPasswordDialog({ account, onClose }: { account: User | null; onClose: () => void }) {
-  const [state, action, pending] = useActionState(resetPasswordAction, { error: null })
-  useDone(state, 'Password updated', onClose)
-  return (
-    <Dialog open={account !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <form onSubmit={submitWithoutReset(action)} className="flex flex-col gap-4">
-          <input type="hidden" name="id" value={account?.id ?? ''} />
-          <DialogHeader>
-            <DialogTitle>New password for {account?.email}</DialogTitle>
-            <DialogDescription>Signs them out everywhere. Share the new password with them.</DialogDescription>
-          </DialogHeader>
-          <Field>
-            <FieldLabel htmlFor="reset-password">New password</FieldLabel>
-            <Input id="reset-password" name="password" type="text" autoComplete="off" required minLength={10} />
-          </Field>
-          <FormError state={state} />
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button type="submit" loading={pending}>
-              Set password
+              {existing ? 'Save brand' : 'Add brand'}
             </Button>
           </DialogFooter>
         </form>

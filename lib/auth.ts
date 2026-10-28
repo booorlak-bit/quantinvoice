@@ -18,11 +18,11 @@ export function authConfigError() {
   return null;
 }
 
-// The key mixes in the user's password hash, so changing a password signs that user out everywhere.
-function sign(value: string, passwordHash: string) {
+// The key mixes in the user's session key, so rotating it signs that user out everywhere.
+function sign(value: string, sessionKey: string) {
   const error = authConfigError();
   if (error) throw new Error(error);
-  return createHmac("sha256", `${process.env.SESSION_SECRET}:${passwordHash}`).update(value).digest("base64url");
+  return createHmac("sha256", `${process.env.SESSION_SECRET}:${sessionKey}`).update(value).digest("base64url");
 }
 
 function safeEqual(a: string, b: string) {
@@ -31,9 +31,9 @@ function safeEqual(a: string, b: string) {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-export async function startSession(userId: string, passwordHash: string) {
+export async function startSession(userId: string, sessionKey: string) {
   const payload = `${userId}.${Date.now() + MAX_AGE_SECONDS * 1000}`;
-  (await cookies()).set(COOKIE_NAME, `${payload}.${sign(payload, passwordHash)}`, {
+  (await cookies()).set(COOKIE_NAME, `${payload}.${sign(payload, sessionKey)}`, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -54,31 +54,17 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   if (!userId || !expires || !signature || Number(expires) < Date.now()) return null;
   if (!/^[0-9a-f-]{36}$/.test(userId)) return null;
 
-  const [row] = await sql<(User & { passwordHash: string })[]>`
-    select id, email, name, avatar_url, role, theme, created_at::text as created_at, password_hash
+  const [row] = await sql<(User & { sessionKey: string })[]>`
+    select id, email, name, avatar_url, theme, created_at::text as created_at, session_key
     from users where id = ${userId}
   `;
-  if (!row || !safeEqual(signature, sign(`${userId}.${expires}`, row.passwordHash))) return null;
-  return {
-    id: row.id,
-    email: row.email,
-    name: row.name,
-    avatarUrl: row.avatarUrl,
-    role: row.role,
-    theme: row.theme,
-    createdAt: row.createdAt,
-  };
+  if (!row || !safeEqual(signature, sign(`${userId}.${expires}`, row.sessionKey))) return null;
+  return { id: row.id, email: row.email, name: row.name, avatarUrl: row.avatarUrl, theme: row.theme, createdAt: row.createdAt };
 });
 
 export async function requireUser(returnTo: string) {
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(returnTo)}`);
-  return user;
-}
-
-export async function requireOwner(returnTo: string) {
-  const user = await requireUser(returnTo);
-  if (user.role !== "owner") redirect("/dashboard");
   return user;
 }
 
