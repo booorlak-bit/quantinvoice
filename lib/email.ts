@@ -1,4 +1,5 @@
 import "server-only";
+import { Resend } from "resend";
 
 /** Thrown when an email can't be sent; its text is safe to show. */
 export class EmailError extends Error {}
@@ -10,35 +11,50 @@ export function emailConfigError() {
   return null;
 }
 
+const ATTEMPTS = 3;
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Sends one email with Resend. Network errors, 5xx and 429 are retried with backoff (429 honours retry-after); the
+ * idempotency key makes a retry of the same message safe. Returns the Resend email ID.
+ */
 export async function sendEmail(message: {
   to: string[];
   subject: string;
   html: string;
   text: string;
+  idempotencyKey: string;
   replyTo?: string | null;
   attachments?: { filename: string; content: Buffer }[];
 }) {
-  let response: Response;
-  try {
-    response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: process.env.EMAIL_FROM,
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  for (let attempt = 1; ; attempt++) {
+    const { data, error, headers } = await resend.emails.send(
+      {
+        from: process.env.EMAIL_FROM!,
         to: message.to,
         subject: message.subject,
         html: message.html,
         text: message.text,
-        reply_to: message.replyTo ?? undefined,
-        attachments: message.attachments?.map((file) => ({ filename: file.filename, content: file.content.toString("base64") })),
-      }),
-      signal: AbortSignal.timeout(15000),
-    });
-  } catch {
-    throw new EmailError("The email wasn’t sent: Resend didn’t answer. Try again in a minute.");
-  }
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new EmailError(`The email wasn’t sent: ${body?.message ?? `Resend answered ${response.status}`}.`);
+        replyTo: message.replyTo ?? undefined,
+        attachments: message.attachments,
+      },
+      { idempotencyKey: message.idempotencyKey },
+    );
+    if (!error) {
+      console.info(`[email] sent ${data?.id} (${message.idempotencyKey})`);
+      return data?.id ?? null;
+    }
+
+    const status = error.statusCode;
+    const retryable = status === null || status === 429 || status >= 500;
+    if (!retryable || attempt >= ATTEMPTS) {
+      console.error(`[email] failed (${message.idempotencyKey}): ${error.name} ${status ?? "network"}: ${error.message}`);
+      throw new EmailError(
+        retryable ? "The email wasn’t sent: Resend didn’t answer. Try again in a minute." : `The email wasn’t sent: ${error.message}`,
+      );
+    }
+    const retryAfter = Number(headers?.["retry-after"]);
+    await pause(Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 5) * 1000 : 500 * 3 ** (attempt - 1));
   }
 }

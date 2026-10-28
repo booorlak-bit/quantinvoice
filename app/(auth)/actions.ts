@@ -44,7 +44,8 @@ export async function requestCodeAction(prev: CodeState, formData: FormData): Pr
   } else {
     try {
       const message = loginCodeEmail(issued.code);
-      await sendEmail({ to: [email], ...message });
+      // One key per code: a retry of this request can't send the same code twice.
+      await sendEmail({ to: [email], ...message, idempotencyKey: `login-code/${issued.id}` });
     } catch (error) {
       if (error instanceof EmailError) return fail(error.message);
       throw error;

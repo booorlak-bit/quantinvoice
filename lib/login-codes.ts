@@ -21,7 +21,7 @@ export function signupAllowed(email: string) {
   return list.some((entry) => (entry.startsWith("@") ? email.endsWith(entry) : email === entry));
 }
 
-export type IssuedCode = { ok: true; code: string } | { ok: false; error: string };
+export type IssuedCode = { ok: true; code: string; id: string } | { ok: false; error: string };
 
 /** Creates a 6-digit code for the email, unless the email or the IP asked too often. Earlier codes stop working. */
 export async function issueLoginCode(email: string, ip: string | null): Promise<IssuedCode> {
@@ -37,15 +37,17 @@ export async function issueLoginCode(email: string, ip: string | null): Promise<
   if (limits.emailHour >= 5 || limits.ipHour >= 20) return { ok: false, error: "Too many codes requested. Try again in an hour." };
 
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-  await sql.begin(async (tx) => {
+  const id = await sql.begin(async (tx) => {
     await tx`delete from login_codes where created_at < now() - interval '1 day'`;
     await tx`update login_codes set used_at = now() where email = ${email} and used_at is null`;
-    await tx`
+    const [row] = await tx<{ id: string }[]>`
       insert into login_codes (email, code_hash, ip, expires_at)
       values (${email}, ${hashCode(email, code)}, ${ip}, now() + ${CODE_TTL_MINUTES} * interval '1 minute')
+      returning id
     `;
+    return row.id;
   });
-  return { ok: true, code };
+  return { ok: true, code, id };
 }
 
 export type CodeCheck = "ok" | "invalid" | "expired" | "locked";
