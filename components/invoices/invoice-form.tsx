@@ -273,7 +273,7 @@ export function InvoiceForm({
               )}
               {companies.length > 1 && (
                 <Field>
-                  <FieldLabel>From</FieldLabel>
+                  <FieldLabel>Brand</FieldLabel>
                   <Select
                     value={values.companyId}
                     onValueChange={(companyId) => {

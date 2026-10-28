@@ -1,12 +1,8 @@
 import "server-only";
-import type { TransactionSql } from "postgres";
 import { sql } from "../db";
-import { hashPassword, verifyPassword } from "../password";
 import type { Note, User } from "../types";
 
-type UserRow = User & { passwordHash: string };
-
-const userColumns = sql`id, email, name, avatar_url, role, theme, created_at::text as created_at`;
+const userColumns = sql`id, email, name, avatar_url, theme, created_at::text as created_at`;
 
 const STARTER_NOTES: Note[] = [
   {
@@ -62,101 +58,61 @@ const STARTER_TEMPLATES = [
   },
 ];
 
-export async function countUsers() {
-  const [{ count }] = await sql<{ count: number }[]>`select count(*)::int as count from users`;
-  return count;
-}
+type SessionUser = User & { sessionKey: string };
 
-export async function findUserForLogin(email: string, password: string) {
-  const [row] = await sql<UserRow[]>`
-    select ${userColumns}, password_hash from users where email = ${email.trim().toLowerCase()}
+/** Finds the account for a verified email, creating it on first sign-in. `created` tells new accounts apart. */
+export async function findOrCreateUser(email: string) {
+  const [row] = await sql<(SessionUser & { created: boolean })[]>`
+    insert into users (email) values (${email})
+    on conflict (email) do update set email = excluded.email
+    returning ${userColumns}, session_key, (xmax = 0) as created
   `;
-  if (!row || !(await verifyPassword(password, row.passwordHash))) return null;
   return row;
 }
 
-type Tx = TransactionSql;
-
-async function seedWorkspace(tx: Tx, userId: string, companyName: string, email: string) {
-  const [{ count }] = await tx<{ count: number }[]>`select count(*)::int as count from companies where user_id = ${userId}`;
-  if (count === 0) {
-    await tx`
-      insert into companies (user_id, name, email, contact_email, invoice_prefix, default_notes, is_default)
-      values (${userId}, ${companyName}, ${email}, ${email}, 'INV-', ${tx.json(STARTER_NOTES)}, true)
-    `;
-  }
-  for (const template of STARTER_TEMPLATES) {
-    await tx`
-      insert into templates (user_id, name, service_type, description, style, items, notes)
-      values (${userId}, ${template.name}, ${template.serviceType}, ${template.description}, ${template.style},
-              ${tx.json(template.items)}, ${tx.json(STARTER_NOTES)})
-    `;
-  }
+/** Whether the account has finished the welcome step (it has at least one brand). */
+export async function hasBrand(userId: string) {
+  const [row] = await sql<{ exists: boolean }[]>`select exists (select 1 from companies where user_id = ${userId}) as exists`;
+  return row.exists;
 }
 
-/**
- * First sign-in on a fresh install: the account becomes the owner and claims every row created before accounts
- * existed. Guarded by a lock so two simultaneous first sign-ins cannot both become owner.
- */
-export async function bootstrapOwner(email: string, password: string) {
-  const passwordHash = await hashPassword(password);
-  return sql.begin(async (tx) => {
-    await tx`lock table users in exclusive mode`;
-    const [{ count }] = await tx<{ count: number }[]>`select count(*)::int as count from users`;
-    if (count > 0) return null;
-
-    const [user] = await tx<UserRow[]>`
-      insert into users (email, password_hash, role) values (${email.trim().toLowerCase()}, ${passwordHash}, 'owner')
-      returning ${userColumns}, password_hash
-    `;
-    for (const table of ["companies", "clients", "projects", "payment_methods", "templates", "invoices", "invoice_items", "payments", "invoice_events"]) {
-      await tx`update ${tx(table)} set user_id = ${user.id} where user_id is null`;
+/** The welcome step: the person's name, their first brand and the starter templates. Safe to repeat. */
+export async function setUpWorkspace(userId: string, input: { name: string | null; brandName: string; email: string }) {
+  await sql.begin(async (tx) => {
+    await tx`update users set name = coalesce(${input.name}, name) where id = ${userId}`;
+    const [{ brands }] = await tx<{ brands: number }[]>`select count(*)::int as brands from companies where user_id = ${userId}`;
+    if (brands === 0) {
+      await tx`
+        insert into companies (user_id, name, email, contact_email, invoice_prefix, default_notes, is_default)
+        values (${userId}, ${input.brandName}, ${input.email}, ${input.email}, 'INV-', ${tx.json(STARTER_NOTES)}, true)
+      `;
     }
-    await seedWorkspace(tx, user.id, "My company", user.email);
-    return user;
+    const [{ templates }] = await tx<{ templates: number }[]>`select count(*)::int as templates from templates where user_id = ${userId}`;
+    if (templates === 0) {
+      for (const template of STARTER_TEMPLATES) {
+        await tx`
+          insert into templates (user_id, name, service_type, description, style, items, notes)
+          values (${userId}, ${template.name}, ${template.serviceType}, ${template.description}, ${template.style},
+                  ${tx.json(template.items)}, ${tx.json(STARTER_NOTES)})
+        `;
+      }
+    }
   });
 }
 
-export async function createAccount(input: { email: string; name: string | null; password: string }) {
-  const passwordHash = await hashPassword(input.password);
-  return sql.begin(async (tx) => {
-    const [user] = await tx<User[]>`
-      insert into users (email, name, password_hash, role)
-      values (${input.email.trim().toLowerCase()}, ${input.name}, ${passwordHash}, 'member')
-      returning ${userColumns}
-    `;
-    await seedWorkspace(tx, user.id, input.name ? `${input.name}'s company` : "My company", user.email);
-    return user;
-  });
+export async function updateProfile(userId: string, input: { name: string | null; avatarUrl: string | null; theme: "light" | "dark" }) {
+  await sql`update users set name = ${input.name}, avatar_url = ${input.avatarUrl}, theme = ${input.theme} where id = ${userId}`;
 }
 
-export async function listAccounts() {
-  return sql<(User & { invoiceCount: number })[]>`
-    select ${userColumns}, (select count(*)::int from invoices i where i.user_id = users.id) as invoice_count
-    from users order by created_at
+/** A new session key invalidates every session signed with the old one. Returns the new key. */
+export async function rotateSessionKey(userId: string) {
+  const [row] = await sql<{ sessionKey: string }[]>`
+    update users set session_key = replace(gen_random_uuid()::text, '-', '') where id = ${userId} returning session_key
   `;
+  return row.sessionKey;
 }
 
-export async function deleteAccount(userId: string) {
-  await sql`delete from users where id = ${userId} and role <> 'owner'`;
-}
-
-export async function updateProfile(userId: string, input: { name: string | null; email: string; avatarUrl: string | null; theme: "light" | "dark" }) {
-  await sql`
-    update users set name = ${input.name}, email = ${input.email.trim().toLowerCase()},
-      avatar_url = ${input.avatarUrl}, theme = ${input.theme}
-    where id = ${userId}
-  `;
-}
-
-export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
-  const [row] = await sql<{ passwordHash: string }[]>`select password_hash from users where id = ${userId}`;
-  if (!row || !(await verifyPassword(currentPassword, row.passwordHash))) return null;
-  const passwordHash = await hashPassword(newPassword);
-  await sql`update users set password_hash = ${passwordHash} where id = ${userId}`;
-  return passwordHash;
-}
-
-export async function resetPassword(userId: string, newPassword: string) {
-  await sql`update users set password_hash = ${await hashPassword(newPassword)} where id = ${userId} and role <> 'owner'`;
+export async function userExists(email: string) {
+  const [row] = await sql<{ exists: boolean }[]>`select exists (select 1 from users where email = ${email}) as exists`;
+  return row.exists;
 }

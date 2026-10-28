@@ -95,7 +95,7 @@ export function FilterBar({
   const company = options.companies.find((entry) => entry.id === filters.companyId)
 
   const chips: { key: string; label: string; clear: () => void }[] = []
-  if (company) chips.push({ key: 'company', label: `Company: ${company.name}`, clear: () => set({ companyId: undefined }) })
+  if (company) chips.push({ key: 'brand', label: `Brand: ${company.name}`, clear: () => set({ companyId: undefined }) })
   if (client)
     chips.push({ key: 'client', label: `Client: ${clientLabel(client)}`, clear: () => set({ clientId: undefined, projectId: undefined }) })
   if (project) chips.push({ key: 'project', label: `Project: ${project.name.split(' · ')[0]}`, clear: () => set({ projectId: undefined }) })
@@ -108,7 +108,7 @@ export function FilterBar({
         {options.companies.length > 1 && (
           <SelectMenu
             icon={<IconBuildings />}
-            label="Company"
+            label="Brand"
             value={filters.companyId}
             options={options.companies.map((entry) => ({ value: entry.id, label: entry.name }))}
             onChange={(companyId) => set({ companyId })}
