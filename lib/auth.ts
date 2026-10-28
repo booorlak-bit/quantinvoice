@@ -2,6 +2,7 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { cache } from "react";
 import { sql } from "./db";
 import type { User } from "./types";
@@ -48,6 +49,8 @@ export async function endSession() {
 
 /** The signed-in user, or null. Cached per request. */
 export const getCurrentUser = cache(async (): Promise<User | null> => {
+  // A session is checked against the clock, so it waits for the request rather than prerendering.
+  await connection();
   const value = (await cookies()).get(COOKIE_NAME)?.value;
   if (!value || authConfigError()) return null;
   const [userId, expires, signature] = value.split(".");

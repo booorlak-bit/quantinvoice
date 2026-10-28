@@ -13,16 +13,18 @@ import {
 
 import { PageBody, PageHeader } from '@/components/app/page-header'
 import { DashboardFilters } from '@/components/dashboard/dashboard-filters'
+import { GettingStarted, GhostChart, HowItWorks, type SetupStep } from '@/components/dashboard/getting-started'
 import { PaymentsChart } from '@/components/dashboard/payments-chart'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { requireUser } from '@/lib/auth'
 import { listClientOptions } from '@/lib/data/clients'
 import { listCompanies } from '@/lib/data/companies'
 import { getDashboard, parseRange, RANGE_MONTHS, type RecentPayment, type UpcomingInvoice } from '@/lib/data/dashboard'
 import { listCurrencies } from '@/lib/data/invoices'
+import { listPaymentMethods } from '@/lib/data/payment-methods'
+import { sendingDomain } from '@/lib/email'
 import { parseFilters, toSearchParams } from '@/lib/filters'
 import { formatDate, formatMoney } from '@/lib/format'
 import type { StatusFilter } from '@/lib/types'
@@ -43,27 +45,89 @@ export default async function DashboardPage({ searchParams }: PageProps<'/dashbo
   const [companies, clients, currencies] = await Promise.all([listCompanies(user.id), listClientOptions(user.id), listCurrencies(user.id)])
 
   if (currencies.length === 0) {
+    const methods = await listPaymentMethods(user.id)
+    const brand = companies.find((company) => company.isDefault) ?? companies[0]
+    const domain = sendingDomain()
+    const zero = formatMoney(0, brand?.defaultCurrency ?? 'USD')
+    const steps: SetupStep[] = [
+      {
+        key: 'brand',
+        title: 'Create your brand',
+        description: brand ? `${brand.name}. Add a logo and details in Settings any time.` : 'Who your invoices come from.',
+        href: '/settings#brands',
+        action: 'Add brand',
+        done: Boolean(brand),
+      },
+      {
+        key: 'sender',
+        title: 'Send from your own address',
+        description: `Invoices go out as ${brand?.name ?? 'your brand'} <you@${domain ?? 'your domain'}> instead of the default sender.`,
+        href: '/settings#brands',
+        action: 'Set address',
+        done: companies.some((company) => company.sender),
+      },
+      {
+        key: 'method',
+        title: 'Add a way to get paid',
+        description: 'A Stripe payment link, a crypto wallet or bank details, shown on every invoice.',
+        href: '/payment-methods',
+        action: 'Add method',
+        done: methods.length > 0,
+      },
+      {
+        key: 'client',
+        title: 'Add your first client',
+        description: 'Name, company and email, so invoices fill themselves in.',
+        href: '/clients',
+        action: 'Add client',
+        done: clients.length > 0,
+      },
+      {
+        key: 'invoice',
+        title: 'Create and send your first invoice',
+        description: 'Send it by email, as a link or as a PDF.',
+        href: '/invoices/new',
+        action: 'New invoice',
+        done: false,
+      },
+    ]
+
     return (
       <>
         <PageHeader crumbs={[{ label: 'Dashboard' }]} />
-        <PageBody title="Dashboard">
-          <Empty className="border border-dashed border-border">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <IconReceiptBill />
-              </EmptyMedia>
-              <EmptyTitle>No invoices yet</EmptyTitle>
-              <EmptyDescription>Payments and upcoming income show up here once you send your first invoice.</EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button asChild>
-                <Link href="/invoices/new">
-                  <IconPlusMedium />
-                  New invoice
-                </Link>
-              </Button>
-            </EmptyContent>
-          </Empty>
+        <PageBody
+          title="Dashboard"
+          description="Your money at a glance, once invoices go out"
+          actions={
+            <Button asChild>
+              <Link href="/invoices/new">
+                <IconPlusMedium />
+                New invoice
+              </Link>
+            </Button>
+          }
+        >
+          <div className="flex flex-col gap-5">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+              <GettingStarted steps={steps} name={user.name} />
+              <HowItWorks />
+            </div>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <StatTile label="Received" icon={<IconWallet1 />} value={zero}>
+                last 6 months
+              </StatTile>
+              <StatTile label="Outstanding" icon={<IconReceiptBill />} value={zero}>
+                No unpaid invoices
+              </StatTile>
+              <StatTile label="Overdue" icon={<IconExclamationTriangle />} value={zero}>
+                Nothing late
+              </StatTile>
+              <StatTile label="Due in 30 days" icon={<IconCalendarClock />} value={zero}>
+                Nothing due
+              </StatTile>
+            </div>
+            <GhostChart />
+          </div>
         </PageBody>
       </>
     )
